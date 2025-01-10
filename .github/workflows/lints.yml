@@ -26,6 +26,9 @@ jobs:
   lints:
     name: lints
     runs-on: ubuntu-latest
+    container:
+      image: rust:latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4 #tag v2.4.0
