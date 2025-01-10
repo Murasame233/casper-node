@@ -35,9 +35,7 @@ jobs:
           persist-credentials: false
 
       - name: setup-nightly-rs
-        run: |
-          make setup-nightly-rs
-          apt install wabt
+        run: make setup-nightly-rs
 
       - uses: Swatinem/rust-cache@v2
 
