@@ -1,5 +1,5 @@
 ---
-name: lints
+name: casper-node
 permissions:
   contents: read
 
@@ -24,11 +24,11 @@ on:
 
 jobs:
   lints:
-    name: lints
+    name: tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4 #tag v2.4.0
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
 
@@ -37,14 +37,14 @@ jobs:
       - name: setup
         run: make setup
 
-      - name: fmt
-        run: make check-format
+      - name: check-std-features
+        run: make check-std-features
 
-      - name: clippy
-        run: make lint
+      - name: check-testing-features
+        run: make check-testing-features
 
-      - name: doc
-        run: make doc
+      - name: test
+        run: make test CARGO_FLAGS=--release
 
-      - name: audit
-        run: make audit
+      - name: test-contracts
+        run: make test-contracts CARGO_FLAGS=--release

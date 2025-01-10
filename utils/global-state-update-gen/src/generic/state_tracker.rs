@@ -331,7 +331,6 @@ impl<T: StateReader> StateTracker<T> {
 
     /// Sets the bid for the given account.
     pub fn set_bid(&mut self, bid_kind: BidKind, slash_instead_of_unbonding: bool) {
-        println!("set bid");
         // skip bridge records since they shouldn't need to be overwritten
         if let BidKind::Bridge(_) = bid_kind {
             return;
