@@ -1,5 +1,6 @@
 ---
 name: lints
+# runs steps that are require nightly rust based on ./smart_contracts/rust-toolchain.toml
 permissions:
   contents: read
 
@@ -26,8 +27,6 @@ jobs:
   lints:
     name: lints
     runs-on: ubuntu-latest
-    container:
-      image: rust:latest
 
     steps:
       - name: Checkout
@@ -35,4 +34,19 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: setup-nightly-rs
+        run: |
+          make setup-nightly-rs
+          apt install wabt
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: check-format
+        run: make check-format
+
+      - name: doc
+        run: make doc
+
+      - name: lint
+        run: make lint
 
