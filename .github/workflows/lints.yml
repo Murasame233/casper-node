@@ -31,23 +31,8 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4 #tag v2.4.0
+        uses: actions/checkout@v4
         with:
           persist-credentials: false
 
-      - uses: Swatinem/rust-cache@v2
 
-      - name: setup
-        run: make setup
-
-      - name: fmt
-        run: make check-format
-
-      - name: clippy
-        run: make lint
-
-      - name: doc
-        run: make doc
-
-      - name: audit
-        run: make audit

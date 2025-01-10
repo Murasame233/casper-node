@@ -39,6 +39,18 @@ jobs:
       - name: setup
         run: make setup
 
+      - name: fmt
+        run: make check-format
+
+      - name: clippy
+        run: make lint
+
+      - name: doc
+        run: make doc
+
+      - name: audit
+        run: make audit
+
       - name: check-std-features
         run: make check-std-features
 
