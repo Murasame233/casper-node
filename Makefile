@@ -192,4 +192,4 @@ setup-nightly-rs:
 	$(RUSTUP) update
 	$(RUSTUP) toolchain install $(PINNED_NIGHTLY)
 	$(RUSTUP) target add --toolchain $(PINNED_NIGHTLY) wasm32-unknown-unknown
-	$(RUSTUP) component add rustfmt clippy-preview
+	$(RUSTUP) component add --toolchain $(PINNED_NIGHTLY) rustfmt clippy-preview
