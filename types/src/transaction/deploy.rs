@@ -482,6 +482,22 @@ impl Deploy {
             });
         }
 
+        let wasm_lane_limit = config
+            .transaction_v1_config
+            .get_max_transaction_gas_limit(LARGE_WASM_LANE_ID);
+        let wasm_lane_limit_as_gas = Gas::new(wasm_lane_limit);
+        if gas_limit > wasm_lane_limit_as_gas {
+            debug!(
+                payment_amount = %gas_limit,
+                %block_gas_limit,
+                    "transaction gas limit exceeds wasm lane limit"
+            );
+            return Err(InvalidDeploy::ExceededWasmLaneGasLimit {
+                wasm_lane_gas_limit: wasm_lane_limit,
+                got: Box::new(gas_limit.value()),
+            });
+        }
+
         let payment_args_length = self.payment().args().serialized_length();
         if payment_args_length > config.deploy_config.payment_args_max_length as usize {
             debug!(
@@ -710,6 +726,39 @@ impl Deploy {
             args: payment_args,
         };
         Self::random_transfer_with_payment(rng, payment)
+    }
+
+    /// Returns a random invalid `Deploy` with an invalid value for the payment amount.
+    #[cfg(any(all(feature = "std", feature = "testing"), test))]
+    pub fn random_with_oversized_payment_amount(rng: &mut TestRng) -> Self {
+        let payment_args = runtime_args! {
+            "amount" => U512::from(400_000_000_000u64)
+        };
+        let payment = ExecutableDeployItem::ModuleBytes {
+            module_bytes: Bytes::new(),
+            args: payment_args,
+        };
+
+        let session = ExecutableDeployItem::StoredContractByName {
+            name: "Test".to_string(),
+            entry_point: "call".to_string(),
+            args: Default::default(),
+        };
+
+        let deploy = Self::random_valid_native_transfer(rng);
+        let secret_key = SecretKey::random(rng);
+
+        Deploy::new_signed(
+            deploy.header.timestamp(),
+            deploy.header.ttl(),
+            deploy.header.gas_price(),
+            deploy.header.dependencies().clone(),
+            deploy.header.chain_name().to_string(),
+            payment,
+            session,
+            &secret_key,
+            None,
+        )
     }
 
     /// Returns a random `Deploy` with custom payment specified as a stored contract by name.
