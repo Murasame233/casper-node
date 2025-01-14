@@ -173,23 +173,16 @@ bench: build-contracts-rs
 setup-cargo-packagers:
 	$(CARGO) install cargo-deb || exit 0
 
+.PHONY: setup-rs
+setup-rs:
+	$(RUSTUP) update
+	$(RUSTUP) toolchain install $(PINNED_STABLE) $(PINNED_NIGHTLY)
+	$(RUSTUP) target add --toolchain $(PINNED_STABLE) wasm32-unknown-unknown
+	$(RUSTUP) target add --toolchain $(PINNED_NIGHTLY) wasm32-unknown-unknown
+	$(RUSTUP) component add --toolchain $(PINNED_NIGHTLY) rustfmt clippy-preview
+	$(RUSTUP) component add --toolchain $(PINNED_STABLE) clippy-preview
+	$(CARGO) install cargo-audit
+
 .PHONY: setup
 setup: setup-rs
 
-.PHONY: setup-rs
-setup-rs: setup-wo-nightly setup-nightly-rs
-
-.PHONY: setup-wo-nightly
-setup-wo-nightly:
-	$(RUSTUP) update
-	$(RUSTUP) toolchain install $(PINNED_STABLE)
-	$(RUSTUP) target add --toolchain $(PINNED_STABLE) wasm32-unknown-unknown
-	$(RUSTUP) component add clippy-preview
-	$(CARGO) install cargo-audit
-
-.PHONY: setup-nightly-rs
-setup-nightly-rs:
-	$(RUSTUP) update
-	$(RUSTUP) toolchain install $(PINNED_NIGHTLY)
-	$(RUSTUP) target add --toolchain $(PINNED_NIGHTLY) wasm32-unknown-unknown
-	$(RUSTUP) component add --toolchain $(PINNED_NIGHTLY) rustfmt clippy-preview

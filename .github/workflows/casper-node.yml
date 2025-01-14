@@ -33,10 +33,19 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: setup-wo-nightly
-        run: make setup-wo-nightly
+      - name: setup
+        run: make setup
 
       - uses: Swatinem/rust-cache@v2
+
+      - name: check-format
+        run: make check-format
+
+      - name: doc
+        run: make doc
+
+      - name: lint
+        run: make lint
 
       - name: audit
         run: make audit
