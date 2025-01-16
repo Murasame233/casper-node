@@ -57,7 +57,7 @@ jobs:
         run: make check-testing-features
 
       - name: test
-        run: make test
+        run: make test CARGO_FLAGS=--release
 
       - name: test-contracts
-        run: make test-contracts
+        run: make test-contracts CARGO_FLAGS=--release
