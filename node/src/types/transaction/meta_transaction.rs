@@ -284,6 +284,54 @@ impl MetaTransaction {
         }
     }
 
+    /// Returns the `SessionInputData` for a payment code if present.
+    pub fn to_payment_input_data(&self) -> SessionInputData {
+        match self {
+            MetaTransaction::Deploy(meta_deploy) => {
+                let initiator_addr =
+                    InitiatorAddr::PublicKey(meta_deploy.deploy().account().clone());
+                let is_standard_payment = matches!(meta_deploy.deploy().payment(), ExecutableDeployItem::ModuleBytes { module_bytes, .. } if module_bytes.is_empty());
+                let deploy = meta_deploy.deploy();
+                let data = SessionDataDeploy::new(
+                    deploy.hash(),
+                    deploy.payment(),
+                    initiator_addr,
+                    self.signers().clone(),
+                    is_standard_payment,
+                );
+                SessionInputData::DeploySessionData { data }
+            }
+            MetaTransaction::V1(v1) => {
+                let initiator_addr = v1.initiator_addr().clone();
+
+                let is_standard_payment = if let PricingMode::PaymentLimited {
+                    standard_payment,
+                    ..
+                } = v1.pricing_mode()
+                {
+                    *standard_payment
+                } else {
+                    true
+                };
+
+                // Under V1 transaction we don't have a separate payment code, and custom payment is
+                // executed as session code with a phase set to Payment.
+                let data = SessionDataV1::new(
+                    v1.args().as_named().expect("V1 wasm args should be named and validated at the transaction acceptor level"),
+                    v1.target(),
+                    v1.entry_point(),
+                    v1.lane_id() == INSTALL_UPGRADE_LANE_ID,
+                    v1.hash(),
+                    v1.pricing_mode(),
+                    initiator_addr,
+                    self.signers().clone(),
+                    is_standard_payment,
+                );
+                SessionInputData::SessionDataV1 { data }
+            }
+        }
+    }
+
     /// Size estimate.
     pub fn size_estimate(&self) -> usize {
         match self {
