@@ -424,7 +424,7 @@ impl Deploy {
         //  InstallUpgrade doesn't rely on the size of transaction
         let max_transaction_size = config
             .transaction_v1_config
-            .get_max_serialized_length(LARGE_WASM_LANE_ID);
+            .get_max_serialized_length_for_wasm();
         self.is_valid_size(max_transaction_size as u32)?;
 
         let header = self.header();
@@ -484,7 +484,7 @@ impl Deploy {
 
         let wasm_lane_limit = config
             .transaction_v1_config
-            .get_max_transaction_gas_limit(LARGE_WASM_LANE_ID);
+            .get_max_payment_limit_for_wasm();
         let wasm_lane_limit_as_gas = Gas::new(wasm_lane_limit);
         if gas_limit > wasm_lane_limit_as_gas {
             debug!(
