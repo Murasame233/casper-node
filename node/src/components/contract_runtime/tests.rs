@@ -1,7 +1,6 @@
-use std::{collections::BTreeMap, fs, iter, path::PathBuf, sync::Arc, time::Duration};
+use std::{collections::BTreeMap, iter, sync::Arc, time::Duration};
 
 use derive_more::{Display, From};
-use once_cell::sync::Lazy;
 use prometheus::Registry;
 use rand::RngCore;
 use serde::Serialize;
@@ -12,7 +11,6 @@ use casper_types::{
     ExecutableDeployItem, PublicKey, SecretKey, TimeDiff, Timestamp, Transaction,
     TransactionConfig, MINT_LANE_ID, U512,
 };
-use tests::testing::LARGE_WASM_LANE_ID;
 
 use super::*;
 use crate::{
