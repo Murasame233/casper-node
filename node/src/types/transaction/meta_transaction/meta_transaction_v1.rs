@@ -48,6 +48,12 @@ impl MetaTransactionV1 {
         v1: &TransactionV1,
         transaction_v1_config: &TransactionV1Config,
     ) -> Result<MetaTransactionV1, InvalidTransaction> {
+        let args_binary_len = v1
+            .payload()
+            .fields()
+            .get(&ARGS_MAP_KEY)
+            .map(|field| field.len())
+            .unwrap_or(0);
         let args: TransactionArgs = v1.deserialize_field(ARGS_MAP_KEY).map_err(|error| {
             InvalidTransaction::V1(InvalidTransactionV1::CouldNotDeserializeField { error })
         })?;
@@ -72,13 +78,13 @@ impl MetaTransactionV1 {
         let payload_hash = v1.payload_hash()?;
         let serialized_length = v1.serialized_length();
         let pricing_mode = v1.payload().pricing_mode();
-
         let lane_id = calculate_transaction_lane(
             &entry_point,
             &target,
             pricing_mode,
             transaction_v1_config,
             serialized_length as u64,
+            args_binary_len as u64,
         )?;
         let has_valid_hash = v1.has_valid_hash();
         let approvals = v1.approvals().clone();

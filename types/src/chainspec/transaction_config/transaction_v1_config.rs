@@ -40,7 +40,7 @@ pub struct TransactionLaneDefinition {
     pub id: u8,
     /// The maximum length of a transaction in bytes
     pub max_transaction_length: u64,
-    /// The maximum number of runtime args
+    /// The max args length size in bytes
     pub max_transaction_args_length: u64,
     /// The maximum gas limit
     pub max_transaction_gas_limit: u64,
@@ -373,13 +373,17 @@ impl TransactionV1Config {
         &self,
         transaction_size: u64,
         additional_computation_factor: u8,
+        runtime_args_size: u64,
     ) -> Option<u8> {
         let mut maybe_adequate_lane_index = None;
         let buckets = self.get_wasm_lanes_ordered_by_transaction_size();
         let number_of_lanes = buckets.len();
         for (i, lane) in buckets.iter().enumerate() {
-            let lane_size = lane.max_transaction_length;
-            if lane_size >= transaction_size {
+            let max_transaction_size = lane.max_transaction_length;
+            let max_runtime_args_size = lane.max_transaction_args_length;
+            if max_transaction_size >= transaction_size
+                && max_runtime_args_size >= runtime_args_size
+            {
                 maybe_adequate_lane_index = Some(i);
                 break;
             }
@@ -397,13 +401,18 @@ impl TransactionV1Config {
         &self,
         gas_limit: u64,
         transaction_size: u64,
+        runtime_args_size: u64,
     ) -> Option<u8> {
         let mut maybe_adequate_lane_index = None;
         let lanes = self.get_wasm_lanes_ordered_by_gas_limit();
         for (i, lane) in lanes.iter().enumerate() {
             let max_transaction_gas = lane.max_transaction_gas_limit;
             let max_transaction_size = lane.max_transaction_length;
-            if max_transaction_gas >= gas_limit && max_transaction_size >= transaction_size {
+            let max_runtime_args_size = lane.max_transaction_args_length;
+            if max_transaction_gas >= gas_limit
+                && max_transaction_size >= transaction_size
+                && max_runtime_args_size >= runtime_args_size
+            {
                 maybe_adequate_lane_index = Some(i);
                 break;
             }
@@ -654,20 +663,23 @@ mod tests {
     #[test]
     fn should_get_configuration_for_wasm() {
         let config = build_example_transaction_config();
-        let got = config.get_wasm_lane_id_by_size(100, 0);
+        let got = config.get_wasm_lane_id_by_size(100, 0, 0);
         assert_eq!(got, Some(3));
         let config = build_example_transaction_config_reverse_wasm_ids();
-        let got = config.get_wasm_lane_id_by_size(100, 0);
+        let got = config.get_wasm_lane_id_by_size(100, 0, 0);
         assert_eq!(got, Some(5));
     }
 
     #[test]
     fn given_too_big_transaction_should_return_none() {
         let config = build_example_transaction_config();
-        let got = config.get_wasm_lane_id_by_size(100000000, 0);
+        let got = config.get_wasm_lane_id_by_size(100000000, 0, 0);
         assert!(got.is_none());
         let config = build_example_transaction_config_reverse_wasm_ids();
-        let got = config.get_wasm_lane_id_by_size(100000000, 0);
+        let got = config.get_wasm_lane_id_by_size(100000000, 0, 0);
+        assert!(got.is_none());
+        let config = build_example_transaction_config_reverse_wasm_ids();
+        let got = config.get_wasm_lane_id_by_size(1, 0, 100000);
         assert!(got.is_none());
     }
 
@@ -675,64 +687,70 @@ mod tests {
     fn given_wasm_should_return_first_fit() {
         let config = build_example_transaction_config();
 
-        let got = config.get_wasm_lane_id_by_size(660, 0);
+        let got = config.get_wasm_lane_id_by_size(660, 0, 0);
         assert_eq!(got, Some(4));
 
-        let got = config.get_wasm_lane_id_by_size(800, 0);
+        let got = config.get_wasm_lane_id_by_size(800, 0, 0);
         assert_eq!(got, Some(5));
 
-        let got = config.get_wasm_lane_id_by_size(1, 0);
+        let got = config.get_wasm_lane_id_by_size(1, 0, 0);
         assert_eq!(got, Some(3));
+
+        let got = config.get_wasm_lane_id_by_size(800, 0, 6024);
+        assert_eq!(got, Some(5));
 
         let config = build_example_transaction_config_reverse_wasm_ids();
 
-        let got = config.get_wasm_lane_id_by_size(660, 0);
+        let got = config.get_wasm_lane_id_by_size(660, 0, 0);
         assert_eq!(got, Some(4));
 
-        let got = config.get_wasm_lane_id_by_size(800, 0);
+        let got = config.get_wasm_lane_id_by_size(800, 0, 0);
         assert_eq!(got, Some(3));
 
-        let got = config.get_wasm_lane_id_by_size(1, 0);
+        let got = config.get_wasm_lane_id_by_size(1, 0, 0);
         assert_eq!(got, Some(5));
+
+        let got = config.get_wasm_lane_id_by_size(800, 0, 6024);
+        assert_eq!(got, Some(3));
     }
 
     #[test]
     fn given_additional_computation_factor_should_be_applied() {
         let config = build_example_transaction_config();
-        let got = config.get_wasm_lane_id_by_size(660, 1);
+        let got = config.get_wasm_lane_id_by_size(660, 1, 0);
         assert_eq!(got, Some(5));
 
         let config = build_example_transaction_config_reverse_wasm_ids();
-        let got = config.get_wasm_lane_id_by_size(660, 1);
+        let got = config.get_wasm_lane_id_by_size(660, 1, 0);
         assert_eq!(got, Some(3));
     }
 
     #[test]
     fn given_additional_computation_factor_should_not_overflow() {
         let config = build_example_transaction_config();
-        let got = config.get_wasm_lane_id_by_size(660, 2);
+        let got = config.get_wasm_lane_id_by_size(660, 2, 0);
         assert_eq!(got, Some(5));
-        let got_2 = config.get_wasm_lane_id_by_size(660, 20);
+        let got_2 = config.get_wasm_lane_id_by_size(660, 20, 0);
         assert_eq!(got_2, Some(5));
 
         let config = build_example_transaction_config_reverse_wasm_ids();
-        let got = config.get_wasm_lane_id_by_size(660, 2);
+        let got = config.get_wasm_lane_id_by_size(660, 2, 0);
         assert_eq!(got, Some(3));
-        let got_2 = config.get_wasm_lane_id_by_size(660, 20);
+        let got_2 = config.get_wasm_lane_id_by_size(660, 20, 0);
         assert_eq!(got_2, Some(3));
     }
 
     #[test]
     fn given_no_wasm_lanes_should_return_none() {
         let config = build_example_transaction_config_no_wasms();
-        let got = config.get_wasm_lane_id_by_size(660, 2);
+        let got = config.get_wasm_lane_id_by_size(660, 2, 0);
         assert!(got.is_none());
-        let got = config.get_wasm_lane_id_by_size(660, 0);
+        let got = config.get_wasm_lane_id_by_size(660, 0, 0);
         assert!(got.is_none());
-        let got = config.get_wasm_lane_id_by_size(660, 20);
+        let got = config.get_wasm_lane_id_by_size(660, 20, 0);
         assert!(got.is_none());
 
-        let got = config.get_wasm_lane_id_by_payment_limited(100, 1);
+        let got = config.get_wasm_lane_id_by_payment_limited(100, 1, 0);
         assert!(got.is_none());
     }
 
@@ -760,14 +778,16 @@ mod tests {
                 TransactionLaneDefinition {
                     id: 5,
                     max_transaction_length: 12,
-                    max_transaction_args_length: 1,
+                    max_transaction_args_length: 5,
                     max_transaction_gas_limit: 155,
                     max_transaction_count: 1,
                 },
             ],
         );
-        let got = config.get_wasm_lane_id_by_payment_limited(54, 1);
+        let got = config.get_wasm_lane_id_by_payment_limited(54, 1, 0);
         assert_eq!(got, Some(4));
+        let got = config.get_wasm_lane_id_by_payment_limited(54, 10, 3);
+        assert_eq!(got, Some(5));
     }
 
     #[test]
@@ -800,7 +820,7 @@ mod tests {
                 },
             ],
         );
-        let got = config.get_wasm_lane_id_by_payment_limited(54, 12);
+        let got = config.get_wasm_lane_id_by_payment_limited(54, 12, 0);
         assert_eq!(got, Some(5));
     }
 
@@ -828,13 +848,15 @@ mod tests {
                 TransactionLaneDefinition {
                     id: 5,
                     max_transaction_length: 12,
-                    max_transaction_args_length: 1,
+                    max_transaction_args_length: 5,
                     max_transaction_gas_limit: 155,
                     max_transaction_count: 1,
                 },
             ],
         );
-        let got = config.get_wasm_lane_id_by_payment_limited(54, 120);
+        let got = config.get_wasm_lane_id_by_payment_limited(54, 120, 0);
+        assert_eq!(got, None);
+        let got = config.get_wasm_lane_id_by_payment_limited(54, 10, 1000);
         assert_eq!(got, None);
     }
 
