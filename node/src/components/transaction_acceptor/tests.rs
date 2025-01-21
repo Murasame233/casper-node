@@ -66,7 +66,7 @@ use crate::{
 };
 
 const POLL_INTERVAL: Duration = Duration::from_millis(10);
-const TIMEOUT: Duration = Duration::from_secs(10);
+const TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Top-level event for the reactor.
 #[derive(Debug, From, Serialize)]
