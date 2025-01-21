@@ -308,11 +308,13 @@ pub fn execute_finalized_block(
                 // in a custom way. If anything goes wrong, penalize the sender, do not execute
                 let custom_payment_gas_limit =
                     Gas::new(chainspec.transaction_config.native_transfer_minimum_motes * 5);
-                let session_input_data = transaction.to_session_input_data();
+
+                let payment_input_data = transaction.to_payment_input_data();
+
                 let pay_result = match WasmV1Request::new_custom_payment(
                     BlockInfo::new(state_root_hash, block_time, parent_block_hash, block_height),
                     custom_payment_gas_limit,
-                    &session_input_data,
+                    &payment_input_data,
                 ) {
                     Ok(mut pay_request) => {
                         // We'll send a hint to the custom payment logic on the amount

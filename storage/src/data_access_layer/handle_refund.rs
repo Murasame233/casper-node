@@ -83,12 +83,14 @@ impl HandleRefundMode {
     /// Returns the appropriate phase for the mode.
     pub fn phase(&self) -> Phase {
         match self {
-            HandleRefundMode::ClearRefundPurse
-            | HandleRefundMode::Burn { .. }
+            HandleRefundMode::Burn { .. }
             | HandleRefundMode::Refund { .. }
             | HandleRefundMode::CustomHold { .. }
             | HandleRefundMode::RefundAmount { .. } => Phase::FinalizePayment,
-            HandleRefundMode::SetRefundPurse { .. } => Phase::Payment,
+
+            HandleRefundMode::ClearRefundPurse | HandleRefundMode::SetRefundPurse { .. } => {
+                Phase::Payment
+            }
         }
     }
 }
