@@ -89,15 +89,6 @@
     ],
     "output": "012a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a"
   },
-  "Transfer": {
-    "input": [
-      {
-        "type": "Key",
-        "value": "transfer-2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a"
-      }
-    ],
-    "output": "032a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a"
-  },
   "SystemEntityRegistry": {
     "input": [
       {
@@ -106,6 +97,15 @@
       }
     ],
     "output": "0a0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "Transfer": {
+    "input": [
+      {
+        "type": "Key",
+        "value": "transfer-2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a"
+      }
+    ],
+    "output": "032a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a"
   },
   "URef": {
     "input": [
