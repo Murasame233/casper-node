@@ -353,14 +353,14 @@ mod proptests {
                 TransactionLaneDefinition {
                     id: 3,
                     max_transaction_length: u64::MAX/2,
-                    max_transaction_args_length: 100,
+                    max_transaction_args_length: 10000,
                     max_transaction_gas_limit: u64::MAX/2,
                     max_transaction_count: 10,
                 },
                 TransactionLaneDefinition {
                     id: 4,
                     max_transaction_length: u64::MAX,
-                    max_transaction_args_length: 100,
+                    max_transaction_args_length: 10000,
                     max_transaction_gas_limit: u64::MAX,
                     max_transaction_count: 10,
                 },
