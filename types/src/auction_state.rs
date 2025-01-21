@@ -1,6 +1,9 @@
-use alloc::collections::{btree_map::Entry, BTreeMap};
+#![allow(deprecated)]
 
-use alloc::vec::Vec;
+use alloc::{
+    collections::{btree_map::Entry, BTreeMap},
+    vec::Vec,
+};
 #[cfg(feature = "json-schema")]
 use once_cell::sync::Lazy;
 #[cfg(feature = "json-schema")]
@@ -32,6 +35,7 @@ static ERA_VALIDATORS: Lazy<EraValidators> = Lazy::new(|| {
 
     era_validators
 });
+
 #[cfg(feature = "json-schema")]
 static AUCTION_INFO: Lazy<AuctionState> = Lazy::new(|| {
     use crate::{system::auction::DelegationRate, AccessRights, SecretKey, URef};
@@ -74,6 +78,7 @@ static AUCTION_INFO: Lazy<AuctionState> = Lazy::new(|| {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 #[cfg_attr(feature = "json-schema", derive(JsonSchema))]
 #[serde(deny_unknown_fields)]
+#[deprecated(since = "5.0.0")]
 pub struct JsonValidatorWeights {
     public_key: PublicKey,
     weight: U512,
@@ -83,6 +88,7 @@ pub struct JsonValidatorWeights {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 #[cfg_attr(feature = "json-schema", derive(JsonSchema))]
 #[serde(deny_unknown_fields)]
+#[deprecated(since = "5.0.0")]
 pub struct JsonEraValidators {
     era_id: EraId,
     validator_weights: Vec<JsonValidatorWeights>,
@@ -92,6 +98,7 @@ pub struct JsonEraValidators {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 #[cfg_attr(feature = "json-schema", derive(JsonSchema))]
 #[serde(deny_unknown_fields)]
+#[deprecated(since = "5.0.0")]
 pub struct AuctionState {
     /// Global state hash.
     pub state_root_hash: Digest,
@@ -106,6 +113,8 @@ pub struct AuctionState {
 
 impl AuctionState {
     /// Create new instance of `AuctionState`
+    /// this logic will retrofit new data into old structure if applicable (it's a lossy
+    /// conversion).
     pub fn new(
         state_root_hash: Digest,
         block_height: u64,
@@ -186,7 +195,7 @@ impl AuctionState {
             state_root_hash,
             block_height,
             era_validators: json_era_validators,
-            bids: BTreeMap::new(), // TODO: figure out if we can retro compat or not
+            bids,
         }
     }
 

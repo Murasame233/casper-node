@@ -10,6 +10,7 @@ pub(crate) fn calculate_transaction_lane(
     pricing_mode: &PricingMode,
     config: &TransactionV1Config,
     size_estimation: u64,
+    runtime_args_size: u64,
 ) -> Result<u8, InvalidTransactionV1> {
     match target {
         TransactionTarget::Native => match entry_point {
@@ -31,9 +32,12 @@ pub(crate) fn calculate_transaction_lane(
             }
         },
         TransactionTarget::Stored { .. } => match entry_point {
-            TransactionEntryPoint::Custom(_) => {
-                get_lane_for_non_install_wasm(config, size_estimation, pricing_mode)
-            }
+            TransactionEntryPoint::Custom(_) => get_lane_for_non_install_wasm(
+                config,
+                size_estimation,
+                pricing_mode,
+                runtime_args_size,
+            ),
             TransactionEntryPoint::Call
             | TransactionEntryPoint::Transfer
             | TransactionEntryPoint::AddBid
@@ -59,7 +63,12 @@ pub(crate) fn calculate_transaction_lane(
                 if *is_install_upgrade {
                     Ok(INSTALL_UPGRADE_LANE_ID)
                 } else {
-                    get_lane_for_non_install_wasm(config, size_estimation, pricing_mode)
+                    get_lane_for_non_install_wasm(
+                        config,
+                        size_estimation,
+                        pricing_mode,
+                        runtime_args_size,
+                    )
                 }
             }
             TransactionEntryPoint::Custom(_)
@@ -87,7 +96,12 @@ pub(crate) fn calculate_transaction_lane(
                 if *is_install_upgrade {
                     Ok(INSTALL_UPGRADE_LANE_ID)
                 } else {
-                    get_lane_for_non_install_wasm(config, size_estimation, pricing_mode)
+                    get_lane_for_non_install_wasm(
+                        config,
+                        size_estimation,
+                        pricing_mode,
+                        runtime_args_size,
+                    )
                 }
             }
             TransactionEntryPoint::Transfer
@@ -112,16 +126,25 @@ fn get_lane_for_non_install_wasm(
     config: &TransactionV1Config,
     transaction_size: u64,
     pricing_mode: &PricingMode,
+    runtime_args_size: u64,
 ) -> Result<u8, InvalidTransactionV1> {
     match pricing_mode {
         PricingMode::PaymentLimited { payment_amount, .. } => config
-            .get_wasm_lane_id_by_payment_limited(*payment_amount, transaction_size)
+            .get_wasm_lane_id_by_payment_limited(
+                *payment_amount,
+                transaction_size,
+                runtime_args_size,
+            )
             .ok_or(InvalidTransactionV1::NoWasmLaneMatchesTransaction()),
         PricingMode::Fixed {
             additional_computation_factor,
             ..
         } => config
-            .get_wasm_lane_id_by_size(transaction_size, *additional_computation_factor)
+            .get_wasm_lane_id_by_size(
+                transaction_size,
+                *additional_computation_factor,
+                runtime_args_size,
+            )
             .ok_or(InvalidTransactionV1::NoWasmLaneMatchesTransaction()),
         PricingMode::Prepaid { .. } => Err(InvalidTransactionV1::PricingModeNotSupported),
     }

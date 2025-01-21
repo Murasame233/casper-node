@@ -94,6 +94,7 @@ pub use addressable_entity::{
 };
 #[doc(inline)]
 pub use api_error::ApiError;
+#[allow(deprecated)]
 pub use auction_state::{AuctionState, JsonEraValidators, JsonValidatorWeights};
 #[cfg(all(feature = "std", feature = "json-schema"))]
 pub use block::JsonBlockWithSignatures;
