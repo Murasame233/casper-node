@@ -692,7 +692,7 @@ fn sample_era_info(delegators_len: u32) -> EraInfo {
     let mut base = EraInfo::new();
     let delegations = (0..delegators_len).map(|i| {
         let pk = u32_to_pk(i);
-        SeigniorageAllocation::delegator(DelegatorKind::PublicKey(pk.clone()), pk, U512::MAX)
+        SeigniorageAllocation::delegator_kind(DelegatorKind::PublicKey(pk.clone()), pk, U512::MAX)
     });
     base.seigniorage_allocations_mut().extend(delegations);
     base

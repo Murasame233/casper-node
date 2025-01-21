@@ -343,7 +343,8 @@ mod fixture {
                         amount,
                     } if validator_public_key == &*DEFAULT_ACCOUNT_PUBLIC_KEY => amount,
                     SeigniorageAllocation::Validator { .. } => panic!("Unexpected validator"),
-                    SeigniorageAllocation::Delegator { .. } => panic!("No delegators"),
+                    SeigniorageAllocation::Delegator { .. }
+                    | SeigniorageAllocation::DelegatorKind { .. } => panic!("No delegators"),
                 })
                 .collect();
 

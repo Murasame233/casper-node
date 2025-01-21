@@ -105,6 +105,13 @@ pub fn make_abi_test_fixtures() -> Result<TestFixtures, Error> {
             .seigniorage_allocations_mut()
             .push(SeigniorageAllocation::Delegator {
                 validator_public_key: PublicKey::from(&validator_secret_key),
+                delegator_public_key: PublicKey::from(&delegator_secret_key),
+                amount: U512::from(1_000_000_000),
+            });
+        era_info
+            .seigniorage_allocations_mut()
+            .push(SeigniorageAllocation::DelegatorKind {
+                validator_public_key: PublicKey::from(&validator_secret_key),
                 delegator_kind: PublicKey::from(&delegator_secret_key).into(),
                 amount: U512::from(1_000_000_000),
             });

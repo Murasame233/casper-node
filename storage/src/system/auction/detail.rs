@@ -662,7 +662,7 @@ where
             delegator_bonding_purse,
         ));
 
-        let allocation = SeigniorageAllocation::delegator(
+        let allocation = SeigniorageAllocation::delegator_kind(
             delegator_kind,
             validator_public_key.clone(),
             delegator_reward_trunc,

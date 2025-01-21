@@ -383,13 +383,13 @@ fn should_distribute_delegation_rate_zero() {
 
     assert!(matches!(
         era_info.select(DELEGATOR_1.clone()).next(),
-        Some(SeigniorageAllocation::Delegator { delegator_kind: DelegatorKind::PublicKey(delegator_public_key) , amount, .. })
+        Some(SeigniorageAllocation::DelegatorKind { delegator_kind: DelegatorKind::PublicKey(delegator_public_key) , amount, .. })
         if *delegator_public_key == *DELEGATOR_1 && *amount == delegator_1_expected_payout
     ));
 
     assert!(matches!(
         era_info.select(DELEGATOR_2.clone()).next(),
-        Some(SeigniorageAllocation::Delegator { delegator_kind: DelegatorKind::PublicKey(delegator_public_key), amount, .. })
+        Some(SeigniorageAllocation::DelegatorKind { delegator_kind: DelegatorKind::PublicKey(delegator_public_key), amount, .. })
         if *delegator_public_key == *DELEGATOR_2 && *amount == delegator_2_expected_payout
     ));
 }
@@ -691,13 +691,13 @@ fn should_withdraw_bids_after_distribute() {
 
     assert!(matches!(
         era_info.select(DELEGATOR_1.clone()).next(),
-        Some(SeigniorageAllocation::Delegator { delegator_kind: DelegatorKind::PublicKey(delegator_public_key), amount, .. })
+        Some(SeigniorageAllocation::DelegatorKind { delegator_kind: DelegatorKind::PublicKey(delegator_public_key), amount, .. })
         if *delegator_public_key == *DELEGATOR_1 && *amount == delegator_1_expected_payout
     ));
 
     assert!(matches!(
         era_info.select(DELEGATOR_2.clone()).next(),
-        Some(SeigniorageAllocation::Delegator { delegator_kind: DelegatorKind::PublicKey(delegator_public_key), amount, .. })
+        Some(SeigniorageAllocation::DelegatorKind { delegator_kind: DelegatorKind::PublicKey(delegator_public_key), amount, .. })
         if *delegator_public_key == *DELEGATOR_2 && *amount == delegator_1_expected_payout
     ));
 }
@@ -939,13 +939,13 @@ fn should_distribute_rewards_after_restaking_delegated_funds() {
 
         assert!(matches!(
             updated_era_info.select(DELEGATOR_1.clone()).next(),
-            Some(SeigniorageAllocation::Delegator { delegator_kind: DelegatorKind::PublicKey(delegator_public_key), amount, .. })
+            Some(SeigniorageAllocation::DelegatorKind { delegator_kind: DelegatorKind::PublicKey(delegator_public_key), amount, .. })
             if *delegator_public_key == *DELEGATOR_1 && *amount == delegator_1_expected_payout
         ));
 
         assert!(matches!(
             updated_era_info.select(DELEGATOR_2.clone()).next(),
-            Some(SeigniorageAllocation::Delegator { delegator_kind: DelegatorKind::PublicKey(delegator_public_key), amount, .. })
+            Some(SeigniorageAllocation::DelegatorKind { delegator_kind: DelegatorKind::PublicKey(delegator_public_key), amount, .. })
             if *delegator_public_key == *DELEGATOR_2 && *amount == delegator_2_expected_payout
         ));
 
@@ -1247,13 +1247,13 @@ fn should_distribute_delegation_rate_half() {
 
     assert!(matches!(
         era_info.select(DELEGATOR_1.clone()).next(),
-        Some(SeigniorageAllocation::Delegator { delegator_kind: DelegatorKind::PublicKey(delegator_public_key), amount, .. })
+        Some(SeigniorageAllocation::DelegatorKind { delegator_kind: DelegatorKind::PublicKey(delegator_public_key), amount, .. })
         if *delegator_public_key == *DELEGATOR_1 && *amount == delegator_1_expected_payout
     ));
 
     assert!(matches!(
         era_info.select(DELEGATOR_2.clone()).next(),
-        Some(SeigniorageAllocation::Delegator { delegator_kind: DelegatorKind::PublicKey(delegator_public_key), amount, .. })
+        Some(SeigniorageAllocation::DelegatorKind { delegator_kind: DelegatorKind::PublicKey(delegator_public_key), amount, .. })
         if *delegator_public_key == *DELEGATOR_2 && *amount == delegator_2_expected_payout
     ));
 }
@@ -1432,13 +1432,13 @@ fn should_distribute_delegation_rate_full() {
 
     assert!(matches!(
         era_info.select(DELEGATOR_1.clone()).next(),
-        Some(SeigniorageAllocation::Delegator { delegator_kind: DelegatorKind::PublicKey(delegator_public_key), amount, .. })
+        Some(SeigniorageAllocation::DelegatorKind { delegator_kind: DelegatorKind::PublicKey(delegator_public_key), amount, .. })
         if *delegator_public_key == *DELEGATOR_1 && *amount == expected_delegator_1_balance
     ));
 
     assert!(matches!(
         era_info.select(DELEGATOR_2.clone()).next(),
-        Some(SeigniorageAllocation::Delegator { delegator_kind: DelegatorKind::PublicKey(delegator_public_key), amount, .. })
+        Some(SeigniorageAllocation::DelegatorKind { delegator_kind: DelegatorKind::PublicKey(delegator_public_key), amount, .. })
         if *delegator_public_key == *DELEGATOR_2 && *amount == expected_delegator_1_balance
     ));
 }
@@ -1662,13 +1662,13 @@ fn should_distribute_uneven_delegation_rate_zero() {
 
     assert!(matches!(
         era_info.select(DELEGATOR_1.clone()).next(),
-        Some(SeigniorageAllocation::Delegator { delegator_kind: DelegatorKind::PublicKey(delegator_public_key), amount, .. })
+        Some(SeigniorageAllocation::DelegatorKind { delegator_kind: DelegatorKind::PublicKey(delegator_public_key), amount, .. })
         if *delegator_public_key == *DELEGATOR_1 && *amount == delegator_1_expected_payout
     ));
 
     assert!(matches!(
         era_info.select(DELEGATOR_2.clone()).next(),
-        Some(SeigniorageAllocation::Delegator { delegator_kind: DelegatorKind::PublicKey(delegator_public_key), amount, .. })
+        Some(SeigniorageAllocation::DelegatorKind { delegator_kind: DelegatorKind::PublicKey(delegator_public_key), amount, .. })
         if *delegator_public_key == *DELEGATOR_2 && *amount == delegator_2_expected_payout
     ));
 }
@@ -1919,13 +1919,13 @@ fn should_distribute_with_multiple_validators_and_delegators() {
 
     assert!(matches!(
         era_info.select(DELEGATOR_1.clone()).next(),
-        Some(SeigniorageAllocation::Delegator { delegator_kind: DelegatorKind::PublicKey(delegator_public_key), amount, .. })
+        Some(SeigniorageAllocation::DelegatorKind { delegator_kind: DelegatorKind::PublicKey(delegator_public_key), amount, .. })
         if *delegator_public_key == *DELEGATOR_1 && *amount == delegator_1_actual_payout
     ));
 
     assert!(matches!(
         era_info.select(DELEGATOR_2.clone()).next(),
-        Some(SeigniorageAllocation::Delegator { delegator_kind: DelegatorKind::PublicKey(delegator_public_key), amount, .. })
+        Some(SeigniorageAllocation::DelegatorKind { delegator_kind: DelegatorKind::PublicKey(delegator_public_key), amount, .. })
         if *delegator_public_key == *DELEGATOR_2 && *amount == delegator_2_actual_payout
     ));
 
@@ -1971,7 +1971,7 @@ fn should_distribute_with_multiple_validators_and_delegators() {
 
     assert!(matches!(
         era_info.select(DELEGATOR_3.clone()).next(),
-        Some(SeigniorageAllocation::Delegator { delegator_kind: DelegatorKind::PublicKey(delegator_public_key), amount, .. })
+        Some(SeigniorageAllocation::DelegatorKind { delegator_kind: DelegatorKind::PublicKey(delegator_public_key), amount, .. })
         if *delegator_public_key == *DELEGATOR_3 && *amount == delegator_3_actual_payout
     ));
 
