@@ -342,16 +342,6 @@ impl<'a, T: ContractRef> ContractBuilder<'a, T> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
-    #[allow(dead_code)]
-    struct MyContract;
-
-    #[derive(BorshSerialize)]
-    struct DoSomethingArg {
-        foo: u64,
-    }
-
     // impl ToCallData for DoSomethingArg {
     //     const SELECTOR: Selector = Selector::new(1);
     //     type Return<'a> = ();
