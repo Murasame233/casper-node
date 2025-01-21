@@ -14,6 +14,7 @@ use crate::{
 
 const SEIGNIORAGE_ALLOCATION_VALIDATOR_TAG: u8 = 0;
 const SEIGNIORAGE_ALLOCATION_DELEGATOR_TAG: u8 = 1;
+const SEIGNIORAGE_ALLOCATION_DELEGATOR_KIND_TAG: u8 = 2;
 
 /// Information about a seigniorage allocation
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize)]
@@ -31,6 +32,15 @@ pub enum SeigniorageAllocation {
     /// Info about a seigniorage allocation for a delegator
     Delegator {
         /// Delegator's public key
+        delegator_public_key: PublicKey,
+        /// Validator's public key
+        validator_public_key: PublicKey,
+        /// Allocated amount
+        amount: U512,
+    },
+    /// Info about a seigniorage allocation for a delegator
+    DelegatorKind {
+        /// Delegator kind
         delegator_kind: DelegatorKind,
         /// Validator's public key
         validator_public_key: PublicKey,
@@ -50,11 +60,24 @@ impl SeigniorageAllocation {
 
     /// Constructs a [`SeigniorageAllocation::Delegator`]
     pub const fn delegator(
-        delegator_kind: DelegatorKind,
+        delegator_public_key: PublicKey,
         validator_public_key: PublicKey,
         amount: U512,
     ) -> Self {
         SeigniorageAllocation::Delegator {
+            delegator_public_key,
+            validator_public_key,
+            amount,
+        }
+    }
+
+    /// Constructs a [`SeigniorageAllocation::DelegatorKind`]
+    pub const fn delegator_kind(
+        delegator_kind: DelegatorKind,
+        validator_public_key: PublicKey,
+        amount: U512,
+    ) -> Self {
+        SeigniorageAllocation::DelegatorKind {
             delegator_kind,
             validator_public_key,
             amount,
@@ -64,8 +87,9 @@ impl SeigniorageAllocation {
     /// Returns the amount for a given seigniorage allocation
     pub fn amount(&self) -> &U512 {
         match self {
-            SeigniorageAllocation::Validator { amount, .. } => amount,
-            SeigniorageAllocation::Delegator { amount, .. } => amount,
+            SeigniorageAllocation::Validator { amount, .. }
+            | SeigniorageAllocation::Delegator { amount, .. }
+            | SeigniorageAllocation::DelegatorKind { amount, .. } => amount,
         }
     }
 
@@ -73,6 +97,9 @@ impl SeigniorageAllocation {
         match self {
             SeigniorageAllocation::Validator { .. } => SEIGNIORAGE_ALLOCATION_VALIDATOR_TAG,
             SeigniorageAllocation::Delegator { .. } => SEIGNIORAGE_ALLOCATION_DELEGATOR_TAG,
+            SeigniorageAllocation::DelegatorKind { .. } => {
+                SEIGNIORAGE_ALLOCATION_DELEGATOR_KIND_TAG
+            }
         }
     }
 }
@@ -92,6 +119,15 @@ impl ToBytes for SeigniorageAllocation {
                     amount,
                 } => validator_public_key.serialized_length() + amount.serialized_length(),
                 SeigniorageAllocation::Delegator {
+                    delegator_public_key,
+                    validator_public_key,
+                    amount,
+                } => {
+                    delegator_public_key.serialized_length()
+                        + validator_public_key.serialized_length()
+                        + amount.serialized_length()
+                }
+                SeigniorageAllocation::DelegatorKind {
                     delegator_kind,
                     validator_public_key,
                     amount,
@@ -114,6 +150,15 @@ impl ToBytes for SeigniorageAllocation {
                 amount.write_bytes(writer)?;
             }
             SeigniorageAllocation::Delegator {
+                delegator_public_key,
+                validator_public_key,
+                amount,
+            } => {
+                delegator_public_key.write_bytes(writer)?;
+                validator_public_key.write_bytes(writer)?;
+                amount.write_bytes(writer)?;
+            }
+            SeigniorageAllocation::DelegatorKind {
                 delegator_kind,
                 validator_public_key,
                 amount,
@@ -140,11 +185,28 @@ impl FromBytes for SeigniorageAllocation {
                 ))
             }
             SEIGNIORAGE_ALLOCATION_DELEGATOR_TAG => {
+                let (delegator_public_key, rem) = PublicKey::from_bytes(rem)?;
+                let (validator_public_key, rem) = PublicKey::from_bytes(rem)?;
+                let (amount, rem) = U512::from_bytes(rem)?;
+                Ok((
+                    SeigniorageAllocation::delegator(
+                        delegator_public_key,
+                        validator_public_key,
+                        amount,
+                    ),
+                    rem,
+                ))
+            }
+            SEIGNIORAGE_ALLOCATION_DELEGATOR_KIND_TAG => {
                 let (delegator_kind, rem) = DelegatorKind::from_bytes(rem)?;
                 let (validator_public_key, rem) = PublicKey::from_bytes(rem)?;
                 let (amount, rem) = U512::from_bytes(rem)?;
                 Ok((
-                    SeigniorageAllocation::delegator(delegator_kind, validator_public_key, amount),
+                    SeigniorageAllocation::delegator_kind(
+                        delegator_kind,
+                        validator_public_key,
+                        amount,
+                    ),
                     rem,
                 ))
             }
@@ -201,7 +263,11 @@ impl EraInfo {
                     validator_public_key,
                     ..
                 } => public_key == *validator_public_key,
-                SeigniorageAllocation::Delegator { delegator_kind, .. } => {
+                SeigniorageAllocation::Delegator {
+                    delegator_public_key,
+                    ..
+                } => public_key == *delegator_public_key,
+                SeigniorageAllocation::DelegatorKind { delegator_kind, .. } => {
                     if let DelegatorKind::PublicKey(delegator_public_key) = delegator_kind {
                         public_key == *delegator_public_key
                     } else {
@@ -271,7 +337,7 @@ pub mod gens {
     fn seigniorage_allocation_delegator_arb() -> impl Strategy<Value = SeigniorageAllocation> {
         (delegator_kind_arb(), public_key_arb(), u512_arb()).prop_map(
             |(delegator_kind, validator_public_key, amount)| {
-                SeigniorageAllocation::delegator(delegator_kind, validator_public_key, amount)
+                SeigniorageAllocation::delegator_kind(delegator_kind, validator_public_key, amount)
             },
         )
     }

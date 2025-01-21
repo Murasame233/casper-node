@@ -969,13 +969,13 @@ fn should_distribute_rewards_with_reserved_slots() {
 
     assert!(matches!(
         era_info.select(DELEGATOR_1.clone()).next(),
-        Some(SeigniorageAllocation::Delegator { delegator_kind: DelegatorKind::PublicKey(delegator_public_key), amount, .. })
+        Some(SeigniorageAllocation::DelegatorKind { delegator_kind: DelegatorKind::PublicKey(delegator_public_key), amount, .. })
         if *delegator_public_key == *DELEGATOR_1 && *amount == delegator_1_expected_payout
     ));
 
     assert!(matches!(
         era_info.select(DELEGATOR_2.clone()).next(),
-        Some(SeigniorageAllocation::Delegator { delegator_kind: DelegatorKind::PublicKey(delegator_public_key), amount, .. })
+        Some(SeigniorageAllocation::DelegatorKind { delegator_kind: DelegatorKind::PublicKey(delegator_public_key), amount, .. })
         if *delegator_public_key == *DELEGATOR_2 && *amount == delegator_2_expected_payout
     ));
 }
