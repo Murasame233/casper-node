@@ -36,6 +36,10 @@ jobs:
       - name: setup
         run: make setup
 
+      - name: setup ubuntu
+        run: |
+         sudo apt-get -y install wabt
+
       - uses: Swatinem/rust-cache@v2
 
       - name: check-format
