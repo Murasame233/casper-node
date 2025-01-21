@@ -732,7 +732,7 @@ impl Deploy {
     #[cfg(any(all(feature = "std", feature = "testing"), test))]
     pub fn random_with_oversized_payment_amount(rng: &mut TestRng) -> Self {
         let payment_args = runtime_args! {
-            "amount" => U512::from(400_000_000_000u64)
+            "amount" => U512::from(1_000_000_000_001u64)
         };
         let payment = ExecutableDeployItem::ModuleBytes {
             module_bytes: Bytes::new(),
