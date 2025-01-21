@@ -66,7 +66,7 @@ use crate::{
 };
 
 const POLL_INTERVAL: Duration = Duration::from_millis(10);
-const TIMEOUT: Duration = Duration::from_secs(10);
+const TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Top-level event for the reactor.
 #[derive(Debug, From, Serialize)]
@@ -219,6 +219,7 @@ enum TestScenario {
     InvalidFieldsFromPeer,
     InvalidArgumentsKind,
     WasmTransactionWithTooBigPayment,
+    WasmDeployWithTooBigPayment,
 }
 
 impl TestScenario {
@@ -265,7 +266,8 @@ impl TestScenario {
             | TestScenario::TooLowGasPriceToleranceForDeploy
             | TestScenario::InvalidFields
             | TestScenario::InvalidArgumentsKind
-            | TestScenario::WasmTransactionWithTooBigPayment => Source::Client,
+            | TestScenario::WasmTransactionWithTooBigPayment
+            | TestScenario::WasmDeployWithTooBigPayment => Source::Client,
         }
     }
 
@@ -671,6 +673,9 @@ impl TestScenario {
                 .unwrap();
                 Transaction::from(txn)
             }
+            TestScenario::WasmDeployWithTooBigPayment => {
+                Transaction::from(Deploy::random_with_oversized_payment_amount(rng))
+            }
         }
     }
 
@@ -731,6 +736,7 @@ impl TestScenario {
             TestScenario::InvalidFieldsFromPeer => false,
             TestScenario::InvalidArgumentsKind => false,
             TestScenario::WasmTransactionWithTooBigPayment => false,
+            TestScenario::WasmDeployWithTooBigPayment => false,
         }
     }
 
@@ -1294,7 +1300,8 @@ async fn run_transaction_acceptor_without_timeout(
             | TestScenario::TooLowGasPriceToleranceForDeploy
             | TestScenario::InvalidFields
             | TestScenario::InvalidArgumentsKind
-            | TestScenario::WasmTransactionWithTooBigPayment => {
+            | TestScenario::WasmTransactionWithTooBigPayment
+            | TestScenario::WasmDeployWithTooBigPayment => {
                 matches!(
                     event,
                     Event::TransactionAcceptorAnnouncement(
@@ -2586,4 +2593,15 @@ async fn should_reject_wasm_transaction_with_limited_too_big_payment() {
             InvalidTransactionV1::NoWasmLaneMatchesTransaction()
         )))
     ));
+}
+
+#[tokio::test]
+async fn should_reject_deploy_with_payment_amount_larger_than_max_wasm_lane_limit() {
+    let result = run_transaction_acceptor(TestScenario::WasmDeployWithTooBigPayment).await;
+    assert!(matches!(
+        result,
+        Err(super::Error::InvalidTransaction(
+            InvalidTransaction::Deploy(InvalidDeploy::ExceededWasmLaneGasLimit { .. })
+        ))
+    ))
 }

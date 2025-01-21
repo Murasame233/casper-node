@@ -139,8 +139,16 @@ pub enum InvalidDeploy {
     /// Invalid runtime.
     InvalidRuntime,
 
-    //Invalida chainspec configuration - seems that chainspec has no wasm lanes defined
+    /// Invalid chainspec configuration - seems that chainspec has no wasm lanes defined
     ChainspecHasNoWasmLanesDefined,
+
+    /// The payment amount associated with the deploy exceeds the block gas limit.
+    ExceededWasmLaneGasLimit {
+        /// Configured block gas limit.
+        wasm_lane_gas_limit: u64,
+        /// The payment amount received.
+        got: Box<U512>,
+    },
 }
 
 impl Display for InvalidDeploy {
@@ -270,6 +278,16 @@ impl Display for InvalidDeploy {
                 write!(formatter, "invalid runtime",)
             }
             InvalidDeploy::ChainspecHasNoWasmLanesDefined => write!(formatter, "chainspec didnt have any wasm lanes defined which is required for wasm based deploys",),
+            InvalidDeploy::ExceededWasmLaneGasLimit {
+                wasm_lane_gas_limit,
+                got,
+            } => {
+                write!(
+                    formatter,
+                    "payment amount of {} exceeds the largest wasm lane gas limit of {}",
+                    got, wasm_lane_gas_limit
+                )
+            }
         }
     }
 }
@@ -307,7 +325,8 @@ impl StdError for InvalidDeploy {
             | InvalidDeploy::UnableToCalculateGasCost
             | InvalidDeploy::GasPriceToleranceTooLow { .. }
             | InvalidDeploy::InvalidRuntime
-            | InvalidDeploy::ChainspecHasNoWasmLanesDefined => None,
+            | InvalidDeploy::ChainspecHasNoWasmLanesDefined
+            | InvalidDeploy::ExceededWasmLaneGasLimit { .. } => None,
         }
     }
 }

@@ -393,6 +393,22 @@ impl TransactionV1Config {
         maybe_adequate_lane_index.map(|index| buckets[index].id)
     }
 
+    pub fn get_max_serialized_length_for_wasm(&self) -> u64 {
+        self.get_wasm_lanes_ordered_by_transaction_size()
+            .iter()
+            .map(|lane_def| lane_def.max_transaction_length)
+            .max()
+            .unwrap_or(0u64)
+    }
+
+    pub fn get_max_payment_limit_for_wasm(&self) -> u64 {
+        self.get_wasm_lanes_ordered_by_gas_limit()
+            .iter()
+            .map(|lane_def| lane_def.max_transaction_gas_limit)
+            .max()
+            .unwrap_or(0u64)
+    }
+
     pub fn get_wasm_lane_id_by_payment_limited(
         &self,
         gas_limit: u64,
