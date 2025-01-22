@@ -6697,16 +6697,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "vm2-test-contract"
-version = "0.1.0"
-dependencies = [
- "borsh",
- "casper-macros",
- "casper-sdk",
- "serde_json",
-]
-
-[[package]]
 name = "vm2-trait"
 version = "0.1.0"
 dependencies = [

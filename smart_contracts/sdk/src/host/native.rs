@@ -1,5 +1,5 @@
 use bytes::Bytes;
-use casper_executor_wasm_common::flags::{EntryPointFlags, ReturnFlags};
+use casper_executor_wasm_common::flags::ReturnFlags;
 use core::{panic::UnwindSafe, slice};
 use once_cell::sync::Lazy;
 use rand::Rng;
@@ -14,8 +14,6 @@ use std::{
 };
 
 use crate::types::Address;
-
-use crate::serializers::borsh::BorshSerialize;
 
 use super::Entity;
 
@@ -103,42 +101,12 @@ pub fn call_export(name: &str) {
     (exports_by_name[0].fptr)();
 }
 
-pub fn call_export_by_module(_module_path: &str, _name: &str) {
-    todo!()
-    // EXPORTS.with(|exports| match exports.get(name) {
-    //     Some(exports) => {
-    //         let export = exports
-    //             .iter()
-    //             .find(|export| export.module_path == module_path)
-    //             .expect("Exactly one");
-
-    //         (export.fptr)();
-    //     }
-    //     None => {
-    //         panic!("No export found with the given name");
-    //     }
-    // });
-}
-
 #[derive(Debug)]
 pub enum NativeTrap {
     Return(ReturnFlags, Bytes),
     Panic(Box<dyn std::any::Any + Send + 'static>),
 }
 
-// macro_rules! define_trait_methods {
-//     // ( @optional $ty:ty ) => { stringify!($ty) };
-//     // ( @optional ) => { "()" };
-//     ( @ret $ty:ty ) => { Result<$ty, $crate::host::native::NativeTrap> };
-//     ( @ret !) => { Result<$crate::host::native::Never, $crate::host::native::NativeTrap> };
-//     ( @ret ) => { Result<(), $crate::host::native::NativeTrap> };
-
-//     ( $( $(#[$cfg:meta])? $vis:vis fn $name:ident $(( $($arg:ident: $argty:ty,)* ))? $(->
-// $ret:ty)?;)+) => {         $(
-//             $(#[$cfg])? fn $name(&self $($(,$arg: $argty)*)?) -> define_trait_methods!(@ret
-// $($ret)?);         )*
-//     }
-// }
 
 pub type Container = BTreeMap<u64, BTreeMap<Bytes, Bytes>>;
 
@@ -152,57 +120,6 @@ impl From<&casper_sdk_sys::Param> for NativeParam {
             String::from_utf8_lossy(unsafe { slice::from_raw_parts(val.name_ptr, val.name_len) })
                 .into_owned();
         NativeParam(name)
-    }
-}
-
-#[derive(Clone)]
-pub struct NativeEntryPoint {
-    pub selector: u32,
-    pub fptr: Arc<dyn Fn() + Send + Sync>,
-    pub flags: EntryPointFlags,
-}
-
-impl std::fmt::Debug for NativeEntryPoint {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("NativeEntryPoint")
-            .field("selector", &self.selector)
-            .field("fptr", &"<fptr>")
-            .field("flags", &self.flags)
-            .finish()
-    }
-}
-
-impl From<&casper_sdk_sys::EntryPoint> for NativeEntryPoint {
-    fn from(val: &casper_sdk_sys::EntryPoint) -> Self {
-        let selector = val.selector;
-        let ptr = val.fptr;
-        let fptr = Arc::new(move || {
-            ptr();
-        });
-        let flags = EntryPointFlags::from_bits(val.flags).expect("Valid flags");
-        NativeEntryPoint {
-            selector,
-            fptr,
-            flags,
-        }
-    }
-}
-
-#[repr(C)]
-#[derive(Debug)]
-pub struct NativeManifest {
-    pub entry_points: Vec<NativeEntryPoint>,
-}
-
-impl From<NonNull<casper_sdk_sys::Manifest>> for NativeManifest {
-    fn from(val: NonNull<casper_sdk_sys::Manifest>) -> Self {
-        let manifest = unsafe { val.as_ref() };
-        let entry_points =
-            unsafe { slice::from_raw_parts(manifest.entry_points, manifest.entry_points_size) }
-                .iter()
-                .map(|entry_point| entry_point.into())
-                .collect();
-        NativeManifest { entry_points }
     }
 }
 
@@ -247,13 +164,9 @@ impl Environment {
         env
     }
 
-    pub fn with_input_data<Args: BorshSerialize>(&self, input_data: Args) -> Self {
+    pub fn with_input_data(&self, input_data: Vec<u8>) -> Self {
         let mut env = self.clone();
-        env.input_data = Some(
-            borsh::to_vec(&input_data)
-                .map(Bytes::from)
-                .expect("Serialization"),
-        );
+        env.input_data = Some(Bytes::from(input_data));
         env
     }
 
@@ -477,18 +390,9 @@ impl Environment {
                     if flags.contains(ReturnFlags::REVERT) {
                         todo!("Constructor returned with a revert flag");
                     }
-
                     assert!(bytes.is_empty(), "When returning from the constructor it is expected that no bytes are passed in a return function");
-
-                    // let mut db = self.db.write().unwrap();
-                    // let values = db.entry(0).or_default();
-                    // values.insert(
-                    //     Bytes::copy_from_slice(contract_address.as_slice()),
-                    //     bytes,
-                    // );
                 }
                 Err(NativeTrap::Panic(_panic)) => {
-                    // todo!!("HadnPanic {:?}", panic);
                     todo!();
                 }
             }

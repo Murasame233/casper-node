@@ -2,7 +2,7 @@
 set -e
 
 VM2_BINS=(
-  #"vm2-test-contract"
+  "vm2-test-contract"
   "vm2-harness"
   "vm2-cep18-caller"
 )
