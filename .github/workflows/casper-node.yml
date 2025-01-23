@@ -1,0 +1,67 @@
+---
+name: casper-node
+# runs steps that are OK with normal rust based on ./rust-toolchain.toml
+permissions:
+  contents: read
+
+on:
+  push:
+    branches:
+      - dev
+      - trying
+      - staging
+      - 'release-**'
+      - 'feat-**'
+    paths-ignore:
+      - '**.md'
+
+  pull_request:
+    branches:
+      - dev
+      - 'release-**'
+      - 'feat-**'
+    paths-ignore:
+      - '**.md'
+
+jobs:
+  lints:
+    name: tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: setup
+        run: make setup
+
+      - name: setup ubuntu
+        run: |
+         sudo apt-get -y install wabt
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: check-format
+        run: make check-format
+
+      - name: doc
+        run: make doc
+
+      - name: lint
+        run: make lint
+
+      - name: audit
+        run: make audit
+
+      - name: check-std-features
+        run: make check-std-features
+
+      - name: check-testing-features
+        run: make check-testing-features
+
+      - name: test
+        run: make test CARGO_FLAGS=--release
+
+      - name: test-contracts
+        run: make test-contracts CARGO_FLAGS=--release
