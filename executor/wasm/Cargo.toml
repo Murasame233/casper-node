@@ -12,7 +12,7 @@ casper-executor-wasm-host  = { path = "../wasm-host" }
 casper-executor-wasm-interface = { path = "../wasm-interface" }
 casper-executor-wasmer-backend = { path = "../wasmer-backend" }
 casper-storage = { path = "../../storage" }
-casper-types = { path = "../../types" }
+casper-types = { path = "../../types", features = ["std"] }
 digest = "0.10.7"
 either = "1.10"
 parking_lot = "0.12.1"

@@ -107,7 +107,6 @@ pub enum NativeTrap {
     Panic(Box<dyn std::any::Any + Send + 'static>),
 }
 
-
 pub type Container = BTreeMap<u64, BTreeMap<Bytes, Bytes>>;
 
 #[derive(Clone, Debug)]
