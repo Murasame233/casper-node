@@ -1,12 +1,14 @@
 use anyhow::{bail, Context};
 
-use std::{ffi::c_void, fs, ptr::NonNull};
+use std::{ffi::c_void, fs, path::PathBuf, ptr::NonNull};
 
 use clap::{Parser, Subcommand};
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
     GetSchema {
+        #[arg(short, long)]
+        output: Option<PathBuf>,
         #[command(flatten)]
         manifest: clap_cargo::Manifest,
         #[command(flatten)]
@@ -43,6 +45,7 @@ fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     match cli.command {
         Command::GetSchema {
+            output: output_path,
             manifest: _,
             workspace,
             mut features,
@@ -87,7 +90,6 @@ fn main() -> anyhow::Result<()> {
 
             let artifact_dir = tempdir.path().join(target_platform).join("release");
 
-            // let path_to_lib = fs::read_dir(&artifact_dir).into_iter().map(|path| path.unwrap())
             let artifacts: Vec<_> = fs::read_dir(&artifact_dir)
                 .with_context(|| "Read directory")?
                 .into_iter()
@@ -95,7 +97,7 @@ fn main() -> anyhow::Result<()> {
                     let dir_entry = dir_entry.unwrap();
                     let path = dir_entry.path();
                     if path.is_file()
-                        && path
+                        && dbg!(&path)
                             .extension()?
                             .to_str()
                             .expect("valid string")
@@ -109,7 +111,7 @@ fn main() -> anyhow::Result<()> {
                 .collect();
 
             if artifacts.len() != 1 {
-                bail!("Expected exactly one build artifact");
+                bail!("Expected exactly one build artifact: {:?}", artifacts);
             }
 
             let artifact_path = artifacts.into_iter().next().expect("artifact");
@@ -149,7 +151,13 @@ fn main() -> anyhow::Result<()> {
                 definitions: defs,
                 entry_points,
             };
-            serde_json::to_writer_pretty(std::io::stdout(), &schema)?;
+
+            if let Some(output) = output_path {
+                let mut file = fs::File::create(&output)?;
+                serde_json::to_writer_pretty(&mut file, &schema)?;
+            } else {
+                serde_json::to_writer_pretty(std::io::stdout(), &schema)?;
+            }
 
             //
             // Stage 2: Construct a schema object from the extracted information

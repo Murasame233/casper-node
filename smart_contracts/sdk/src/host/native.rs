@@ -781,6 +781,18 @@ mod symbols {
         crate::host::native::handle_ret(_call_result)
     }
 
+    #[no_mangle]
+    pub extern "C" fn casper_upgrade(
+        _code_ptr: *const u8,
+        _code_size: usize,
+        _entry_point_ptr: *const u8,
+        _entry_point_size: usize,
+        _input_ptr: *const u8,
+        _input_size: usize,
+    ) -> u32 {
+        todo!()
+    }
+
     use std::ptr;
 
     use super::with_current_environment;

@@ -3,9 +3,12 @@ use cfg_if::cfg_if;
 cfg_if! {
     if #[cfg(feature = "std")] {
         pub use ::std::{format, borrow, string, vec, boxed, fmt, str, marker, ffi, ptr, mem, cmp};
-        // pub use ::std::collections::{btree_map}
+
         pub mod collections {
             pub use ::std::collections::btree_map::{self, BTreeMap};
+            pub use ::std::collections::{linked_list::{self, LinkedList}};
+            pub use ::std::collections::{hash_map::{self, HashMap}};
+            pub use ::std::collections::{btree_set::{self, BTreeSet}};
         }
     }
     else {
@@ -15,6 +18,9 @@ cfg_if! {
 
         pub mod collections {
             pub use ::alloc::collections::btree_map::{self, BTreeMap};
+            pub use ::alloc::collections::{linked_list::{self, LinkedList}};
+            pub use ::alloc::collections::{hash_map::{self, HashMap}};
+            pub use ::alloc::collections::{btree_set::{self, BTreeSet}};
         }
     }
 }
