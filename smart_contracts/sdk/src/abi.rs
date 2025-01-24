@@ -1,4 +1,8 @@
-use crate::prelude::{collections, collections::BTreeMap, str::FromStr};
+use crate::prelude::{
+    collections,
+    collections::{BTreeMap, BTreeSet, HashMap, LinkedList},
+    str::FromStr,
+};
 use impl_trait_for_tuples::impl_for_tuples;
 use serde::{Deserialize, Serialize};
 
@@ -207,6 +211,23 @@ where
     }
 }
 
+impl<T> CasperABI for Box<T>
+where
+    T: CasperABI,
+{
+    fn populate_definitions(definitions: &mut Definitions) {
+        T::populate_definitions(definitions)
+    }
+
+    fn declaration() -> Declaration {
+        T::declaration()
+    }
+
+    fn definition() -> Definition {
+        T::definition()
+    }
+}
+
 macro_rules! impl_abi_for_types {
     // Accepts following syntax: impl_abi_for_types(u8, u16, u32, u64, String => "string", f32, f64)
     ($($ty:ty $(=> $name:expr)?,)* ) => {
@@ -395,6 +416,24 @@ impl<K: CasperABI, V: CasperABI> CasperABI for BTreeMap<K, V> {
     }
 }
 
+impl<K: CasperABI, V: CasperABI> CasperABI for HashMap<K, V> {
+    fn populate_definitions(definitions: &mut Definitions) {
+        definitions.populate_one::<K>();
+        definitions.populate_one::<V>();
+    }
+
+    fn declaration() -> Declaration {
+        format!("HashMap<{}, {}>", K::declaration(), V::declaration())
+    }
+
+    fn definition() -> Definition {
+        Definition::Mapping {
+            key: K::declaration(),
+            value: V::declaration(),
+        }
+    }
+}
+
 impl CasperABI for String {
     fn populate_definitions(_definitions: &mut Definitions) {}
 
@@ -431,6 +470,36 @@ impl CasperABI for &str {
     fn definition() -> Definition {
         Definition::Sequence {
             decl: char::declaration(),
+        }
+    }
+}
+
+impl<T: CasperABI> CasperABI for LinkedList<T> {
+    fn populate_definitions(definitions: &mut Definitions) {
+        definitions.populate_one::<T>();
+    }
+
+    fn declaration() -> Declaration {
+        format!("LinkedList<{}>", T::declaration())
+    }
+    fn definition() -> Definition {
+        Definition::Sequence {
+            decl: T::declaration(),
+        }
+    }
+}
+
+impl<T: CasperABI> CasperABI for BTreeSet<T> {
+    fn populate_definitions(definitions: &mut Definitions) {
+        definitions.populate_one::<T>();
+    }
+
+    fn declaration() -> Declaration {
+        format!("BTreeSet<{}>", T::declaration())
+    }
+    fn definition() -> Definition {
+        Definition::Sequence {
+            decl: T::declaration(),
         }
     }
 }

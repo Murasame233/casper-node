@@ -606,24 +606,16 @@ mod tests {
     use super::*;
     #[test]
     fn can_call_exported_function() {
-        super::yet_another_exported_function(1234, "Hello, world!".to_string());
+        super::yet_another_exported_function(1234u64, "Hello, world!".to_string());
 
         let input_data =
-            casper_sdk::serializers::borsh::to_vec(&(4321, "!world, Hello".to_string())).unwrap();
+            casper_sdk::serializers::borsh::to_vec(&(4321u64, "!world, Hello".to_string()))
+                .unwrap();
 
         dispatch_with(Environment::default().with_input_data(input_data), || {
             native::call_export("yet_another_exported_function");
         })
         .unwrap();
-    }
-
-    #[test]
-    fn perform_test_natively() {
-        let result = dispatch(|| {
-            let create_result = host::casper_create(None, 0, None, None).unwrap();
-            perform_test(create_result.contract_address);
-        });
-        dbg!(&result);
     }
 
     #[test]

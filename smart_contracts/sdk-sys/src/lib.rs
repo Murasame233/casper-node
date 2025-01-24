@@ -1,5 +1,4 @@
 pub mod for_each_host_function;
-pub mod utils;
 
 #[repr(C)]
 pub struct Param {
@@ -9,21 +8,6 @@ pub struct Param {
 
 /// Signature of a function pointer that a host understands.
 pub type Fptr = extern "C" fn() -> ();
-
-#[repr(C)]
-#[derive(Copy, Clone, Debug)]
-pub struct EntryPoint {
-    pub selector: u32,
-    pub fptr: Fptr,
-    pub flags: u32,
-}
-
-#[repr(C)]
-#[derive(Debug)]
-pub struct Manifest {
-    pub entry_points: *const EntryPoint,
-    pub entry_points_size: usize,
-}
 
 #[derive(Debug)]
 #[repr(C)]

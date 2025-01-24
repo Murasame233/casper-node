@@ -6657,17 +6657,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "vm2-cep78"
-version = "0.1.0"
-dependencies = [
- "borsh",
- "casper-macros",
- "casper-sdk",
- "casper-sdk-codegen",
- "serde_json",
-]
-
-[[package]]
 name = "vm2-flipper"
 version = "0.1.0"
 dependencies = [
@@ -6693,16 +6682,6 @@ dependencies = [
  "casper-macros",
  "casper-sdk",
  "casper-sdk-codegen",
- "serde_json",
-]
-
-[[package]]
-name = "vm2-test-contract"
-version = "0.1.0"
-dependencies = [
- "borsh",
- "casper-macros",
- "casper-sdk",
  "serde_json",
 ]
 

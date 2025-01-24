@@ -13,6 +13,7 @@ CARGO := $(CARGO) $(CARGO_OPTS)
 DISABLE_LOGGING = RUST_LOG=MatchesNothing
 
 # Rust Contracts
+VM2_CONTRACTS    = $(shell find ./smart_contracts/contracts/vm2 -mindepth 1 -maxdepth 1 -type d -exec basename {} \;)
 ALL_CONTRACTS    = $(shell find ./smart_contracts/contracts/[!.]* -mindepth 1 -maxdepth 1 -not -path "./smart_contracts/contracts/vm2*" -type d -exec basename {} \;)
 CLIENT_CONTRACTS = $(shell find ./smart_contracts/contracts/client -mindepth 1 -maxdepth 1 -type d -exec basename {} \;)
 CARGO_HOME_REMAP = $(if $(CARGO_HOME),$(CARGO_HOME),$(HOME)/.cargo)
@@ -23,6 +24,13 @@ CONTRACT_TARGET_DIR_AS    = target_as
 
 build-contract-rs/%:
 	cd smart_contracts/contracts && RUSTFLAGS=$(RUSTC_FLAGS) $(CARGO) build --verbose --release $(filter-out --release, $(CARGO_FLAGS)) --package $*
+
+build-vm2-contract-rs/%:
+	RUSTFLAGS=$(RUSTC_FLAGS) $(CARGO) run -p cargo-casper --bin cargo-casper -- get-schema --package $*
+	cd smart_contracts/contracts/vm2 && RUSTFLAGS=$(RUSTC_FLAGS) $(CARGO) build --verbose --release $(filter-out --release, $(CARGO_FLAGS)) --package $*
+
+.PHONY: build-vm2-contracts-rs
+build-vm2-contracts-rs: $(patsubst %, build-vm2-contract-rs/%, $(VM2_CONTRACTS))
 
 .PHONY: build-all-contracts-rs
 build-all-contracts-rs: $(patsubst %, build-contract-rs/%, $(ALL_CONTRACTS))

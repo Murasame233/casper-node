@@ -7,11 +7,11 @@ use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::{format_ident, quote, ToTokens};
 use syn::{
-    parse_macro_input, Data, DeriveInput, Fields, ItemEnum, ItemFn, ItemImpl, ItemStruct,
-    ItemTrait, ItemUnion, LitStr, Type,
+    parse_macro_input, Fields, ItemEnum, ItemFn, ItemImpl, ItemStruct, ItemTrait, ItemUnion,
+    LitStr, Type,
 };
 
-use casper_sdk::casper_executor_wasm_common::{flags::EntryPointFlags, selector::Selector};
+use casper_sdk::casper_executor_wasm_common::flags::EntryPointFlags;
 const CASPER_RESERVED_FALLBACK_EXPORT: &str = "__casper_fallback";
 
 #[derive(Debug, FromAttributes)]
@@ -54,121 +54,6 @@ struct ImplTraitForContractMeta {
     /// Does not produce Wasm exports for the entry points.
     #[darling(default)]
     compile_as_dependency: bool,
-}
-
-#[proc_macro_derive(Contract)]
-pub fn derive_casper_contract(input: TokenStream) -> TokenStream {
-    // Parse the input tokens into a syntax tree
-    let contract = parse_macro_input!(input as DeriveInput);
-
-    // let contract_attributes = ContractAttributes::from_attributes(&contract.attrs).unwrap();
-
-    let name = &contract.ident;
-    let _vis = &contract.vis;
-
-    let _data_struct = match &contract.data {
-        Data::Struct(s) => s,
-        Data::Enum(_) => todo!("Enum"),
-        Data::Union(_) => todo!("Union"),
-    };
-
-    let ref_name = format_ident!("{}Ref", name);
-
-    // let mut dynamic_manifest = Vec::new();
-    // let mut impl_for_ref = Vec::new();
-    // if let Some(traits) = contract_attributes.impl_traits {
-    //     for path in traits.iter() {
-    //         let ref_trait = format_ident!("{}Ext", path.require_ident().unwrap());
-    //         let ref_struct = format_ident!("{}Ref", path.require_ident().unwrap());
-    //         dynamic_manifest.push(quote! {
-    //             {
-    //                 const DISPATCH_TABLE: &[casper_sdk::sys::EntryPoint] =
-    // &(<#ref_struct>::__casper_new_trait_dispatch_table::<#name>());
-    // DISPATCH_TABLE             }
-    //         });
-
-    //         impl_for_ref.push(quote! {
-    //             impl #ref_trait for #ref_name {}
-    //         })
-    //     }
-    // }
-
-    // let ext_struct_name = format_ident!("{st_name}Ref");
-
-    let f = quote! {
-
-        // impl casper_sdk::Contract for #name {
-        //     type Ref = #ref_name;
-
-        //     fn name() -> &'static str {
-        //         stringify!(#name)
-        //     }
-
-
-        //     fn create<T:casper_sdk::ToCallData>(value: u64, call_data: T) -> Result<casper_sdk::ContractHandle<Self::Ref>, casper_sdk::types::CallError> {
-        //         // TODO: Pass multiple manifests by ptr to avoid allocation
-        //         let entry_points = &<(#ref_name)>::ENTRY_POINTS;
-        //         let entry_points_allocated: Vec<casper_sdk::sys::EntryPoint> = entry_points.into_iter().map(|i| i.into_iter().copied()).flatten().collect();
-
-        //         let manifest = casper_sdk::sys::Manifest {
-        //             entry_points: entry_points_allocated.as_ptr(),
-        //             entry_points_size: entry_points_allocated.len(),
-        //         };
-
-        //         let input_data = call_data.input_data();
-
-        //         let create_result = casper_sdk::host::casper_create(None, &manifest, value, Some(T::SELECTOR), input_data.as_ref().map(|v| v.as_slice()))?;
-        //         Ok(casper_sdk::ContractHandle::<Self::Ref>::from_address(create_result.contract_address))
-        //     }
-
-        //     fn default_create() -> Result<casper_sdk::ContractHandle<Self::Ref>, casper_sdk::types::CallError> {
-        //         // TODO: Pass multiple manifests by ptr to avoid allocation
-        //         let entry_points = &<(#ref_name)>::ENTRY_POINTS;
-        //         let entry_points_allocated: Vec<casper_sdk::sys::EntryPoint> = entry_points.into_iter().map(|i| i.into_iter().copied()).flatten().collect();
-        //         let manifest = casper_sdk::sys::Manifest {
-        //             entry_points: entry_points_allocated.as_ptr(),
-        //             entry_points_size: entry_points_allocated.len(),
-        //         };
-        //         let create_result = casper_sdk::host::casper_create(None, &manifest, 0, None, None)?;
-        //         Ok(casper_sdk::ContractHandle::<Self::Ref>::from_address(create_result.contract_address))
-        //         // todo!()
-        //     }
-
-        //     fn upgrade<T: casper_sdk::ToCallData>(
-        //         new_code: Option<&[u8]>,
-        //         // new_manifest: &[u8],
-        //         call_data: T,
-        //     ) -> Result<(), casper_sdk::types::CallError> {
-        //         // let entry_points = &<(#ref_name)>::ENTRY_POINTS;
-        //         // let entry_points_allocated: Vec<casper_sdk::sys::EntryPoint> = entry_points.into_iter().map(|i| i.into_iter().copied()).flatten().collect();
-        //     // let manifest = casper_sdk::sys::Manifest {
-        //         //     entry_points: entry_points_allocated.as_ptr(),
-        //         //     entry_points_size: entry_points_allocated.len(),
-        //         // }; let input_data = call_data.input_data();
-        //         // let create_result = casper_sdk::host::casper_upgrade(code, &manifest, Some(T::SELECTOR), input_data.as_ref().map(|v| v.as_slice()))?;
-        //         Ok(())
-        //     }
-        // }
-
-        #[derive(Debug)]
-        pub struct #ref_name;
-
-        #[doc(hidden)]
-        impl #ref_name {
-            #[doc(hidden)]
-            const ENTRY_POINTS: &'static [&'static [casper_sdk::sys::EntryPoint]] = &[
-                // #(#dynamic_manifest,)*
-                &(#name::MANIFEST),
-            ];
-        }
-
-        const _: () = {
-            assert!(casper_sdk::sys::utils::fallback_selector_count(<#ref_name>::ENTRY_POINTS) <= 1, "There can be at most one fallback entry point");
-        };
-
-        // #(#impl_for_ref)*
-    };
-    f.into()
 }
 
 fn generate_call_data_return(output: &syn::ReturnType) -> proc_macro2::TokenStream {
@@ -245,16 +130,6 @@ pub fn casper(attrs: TokenStream, item: TokenStream) -> TokenStream {
         );
         TokenStream::from(err.to_compile_error())
     }
-
-    //     proc_macro::TokenTree::Ident(ident) if ident.to_string() == "export" =>
-    //  {
-
-    //         return token.into();
-    //     }
-    //     other => todo!("other attribute {other:?}"),
-    // }
-    // }
-    // todo!("???")
 }
 
 fn generate_export_function(func: ItemFn) -> TokenStream {
@@ -295,10 +170,8 @@ fn generate_export_function(func: ItemFn) -> TokenStream {
             struct Arguments {
                 #(#args_attrs,)*
             }
-
             let input = casper_sdk::host::casper_copy_input();
             let args: Arguments = casper_sdk::serializers::borsh::from_slice(&input).unwrap();
-
             let _ret = #func_name(#(args.#arg_names,)*);
         }
 
@@ -307,20 +180,6 @@ fn generate_export_function(func: ItemFn) -> TokenStream {
 
         #[cfg(not(target_arch = "wasm32"))]
         const _: () = {
-            // fn #func_name() {
-            //     #[derive(casper_sdk::serializers::borsh::BorshDeserialize)]
-            //     #[borsh(crate = "casper_sdk::serializers::borsh")]
-            //     struct Arguments {
-            //         #(#args_attrs,)*
-            //     }
-
-
-            //     let input = casper_sdk::host::casper_copy_input();
-            //     let args: Arguments = casper_sdk::serializers::borsh::from_slice(&input).unwrap();
-
-            //     let _ret = #exported_func_name(#(args.#arg_names,)*);
-            // }
-
             #[casper_sdk::linkme::distributed_slice(casper_sdk::host::native::private_exports::EXPORTS)]
             #[linkme(crate = casper_sdk::linkme)]
             pub static EXPORTS: casper_sdk::host::native::Export = casper_sdk::host::native::Export {
@@ -338,7 +197,6 @@ fn generate_impl_for_contract(
     mut entry_points: ItemImpl,
     _has_fallback_selector: bool,
 ) -> TokenStream {
-    let mut combined_selectors = Selector::zero();
     #[cfg(feature = "__abi_generator")]
     let mut populate_definitions_linkme = Vec::new();
     let impl_trait = match entry_points.trait_.as_ref() {
@@ -594,18 +452,6 @@ fn generate_impl_for_contract(
                 };
 
                 let _bits = flag_value.bits();
-                // let _selector_value = selector_value.map(|value|
-                // value.get()).unwrap_or_default();
-
-                // #[cfg(feature = "__abi_generator")]
-                // abi_generator_entry_points.push(quote! {
-                //     #()
-                //     const _: () = {
-                //         #[casper_sdk::linkme::distributed_slice(casper_sdk::abi_generator::ENTRYPOINTS)]
-                //         #[linkme(crate = casper_sdk::linkme)]
-                //         static ENTRY_POINTS: fn() -> casper_sdk::schema::SchemaEntryPoint =
-                // <#struct_name>::__casper_entry_points;     };
-                // });
 
                 let extern_func_name = format_ident!("__casper_export_{func_name}");
 
@@ -772,12 +618,6 @@ fn generate_impl_for_contract(
             });
         }
 
-        // let mut args = Vec::new();
-        // for arg in &entry_point
-
-        let selector_value = utils::compute_selector_value(&func.sig);
-        combined_selectors ^= Selector::from(selector_value);
-
         #[cfg(feature = "__abi_generator")]
         {
             let bits = flag_value.bits();
@@ -881,42 +721,7 @@ fn generate_impl_for_contract(
 
             #[doc(hidden)]
             impl #struct_name {
-                // #[doc(hidden)]
-                // fn __casper_populate_definitions(definitions: &mut casper_sdk::abi::Definitions) {
-                //     <#struct_name as casper_sdk::abi::CasperABI>::populate_definitions(definitions);
-                //     #(#populate_definitions)*;
-                // }
-
-                // #[doc(hidden)]
-                // fn __casper_schema() -> casper_sdk::schema::Schema {
-                //     const VERSION: &str = env!("CARGO_PKG_VERSION");
-
-                //     let mut entry_points = Self::__casper_entry_points();
-
-                //     let definitions = {
-                //         let mut definitions = casper_sdk::abi::Definitions::default();
-                //         Self::__casper_populate_definitions(&mut definitions);
-                //         definitions
-                //     };
-
-                //     let state = <#struct_name as casper_sdk::abi::CasperABI>::declaration();
-                //     casper_sdk::schema::Schema {
-                //         name: stringify!(#struct_name).into(),
-                //         type_: casper_sdk::schema::SchemaType::Contract {
-                //             state,
-                //         },
-                //         version: Some(VERSION.into()),
-                //         definitions,
-                //         entry_points,
-                //     }
-                // }
-
-                // #[doc(hidden)]
-                // const MANIFEST: [casper_sdk::sys::EntryPoint; #entry_points_len] = [#(#entry_points,)*];
-
                 #(#defs)*
-
-
             }
 
             #maybe_abi_collectors
@@ -927,16 +732,13 @@ fn generate_impl_for_contract(
         }),
     };
     let ref_struct_name = format_ident!("{st_name}Ref");
-    let _combined_selectors = combined_selectors.get();
+
     quote! {
         #entry_points
 
         #handle_manifest
 
         impl #ref_struct_name {
-            // TODO: Collect combined selectors
-            // pub const SELECTOR: vm_common::selector::Selector = vm_common::selector::Selector::new(#combined_selectors);
-
             #(#extra_code)*
         }
     }
@@ -1035,7 +837,6 @@ fn casper_trait_definition(
     _trait_meta: TraitMeta,
     _has_fallback_selector: &mut bool,
 ) -> TokenStream {
-    let mut combined_selectors = Selector::zero();
     let trait_name = &item_trait.ident;
     let vis = &item_trait.vis;
     let mut dispatch_functions = Vec::new();
@@ -1103,9 +904,6 @@ fn casper_trait_definition(
                 let call_data_return_lifetime = generate_call_data_return(&func.sig.output);
 
                 let dispatch_func_name = format_ident!("{trait_name}_{func_name}_dispatch");
-
-                let selector_value = utils::compute_selector_value(&func.sig);
-                combined_selectors ^= Selector::from(selector_value);
 
                 let arg_names_and_types = func
                     .sig
@@ -1264,7 +1062,6 @@ fn casper_trait_definition(
     let ref_struct = format_ident!("{trait_name}Ref");
     let ref_struct_trait = format_ident!("{trait_name}Ext");
 
-    let combined_selectors = combined_selectors.get();
     let macro_name = format_ident!("enumerate_{trait_name}_symbols");
 
     let extension_struct = quote! {
@@ -1275,34 +1072,9 @@ fn casper_trait_definition(
         #vis struct #ref_struct;
 
         impl #ref_struct {
-            pub const SELECTOR: casper_sdk::casper_executor_wasm_common::selector::Selector = casper_sdk::casper_executor_wasm_common::selector::Selector::new(#combined_selectors);
 
-            // #[doc(hidden)]
-            // #vis const fn __casper_new_trait_dispatch_table<T: #trait_name + borsh::BorshDeserialize + borsh::BorshSerialize + Default>() -> [casper_sdk::sys::EntryPoint; #manifest_data_len] {
-            //     // This will create set of extern "C" function pointers that will dispatch to a concerete implementation.
-            //     // Essentially, this constructor provides 'late binding' and crates function pointers for any concrete implementation of given trait.
-            //     [
-            //         #(#dispatch_table,)*
-            //     ]
-            // }
-            // // #[doc(hidden)]
-            // #vis fn __casper_populate_definitions(definitions: &mut casper_sdk::abi::Definitions) {
-            //     #(#populate_definitions)*;
-            // }
-
-            // #[doc(hidden)]
-            // #vis fn __casper_schema_entry_points() -> Vec<casper_sdk::schema::SchemaEntryPoint> {
-            //     vec![
-            //         #(#schema_entry_points,)*
-            //     ]
-            // }
         }
 
-
-
-
-        // #[macro_export]
-        // mod #mod_name {
         #[allow(non_snake_case, unused_macros)]
         macro_rules! #macro_name {
             ($mac:ident) => {
@@ -1316,36 +1088,8 @@ fn casper_trait_definition(
 
         #(#dispatch_functions)*
 
-        // }
-        // }
-
-        // pub(crate) use #mod_name::#macro_name;
-
         // TODO: Rename Ext with Ref, since Ref struct can be pub(crate)'d
         impl #ref_struct_trait for #ref_struct {}
-
-            // impl casper_sdk::schema::CasperSchema for #ref_struct {
-            //     fn schema() -> casper_sdk::schema::Schema {
-            //         const VERSION: &str = env!("CARGO_PKG_VERSION");
-
-            //         let entry_points = Self::__casper_schema_entry_points();
-
-            //         let definitions = {
-            //             let mut definitions = casper_sdk::abi::Definitions::default();
-            //             Self::__casper_populate_definitions(&mut definitions);
-            //             definitions
-            //         };
-
-            //         casper_sdk::schema::Schema {
-            //             name: stringify!(#trait_name).into(),
-            //             version: Some(VERSION.into()),
-            //             type_: casper_sdk::schema::SchemaType::Interface,
-            //             definitions,
-            //             entry_points,
-            //         }
-            //     }
-            // }
-
             impl casper_sdk::ContractRef for #ref_struct {
                 fn new() -> Self {
                     #ref_struct
@@ -1768,21 +1512,6 @@ pub fn derive_casper_abi(input: TokenStream) -> TokenStream {
     TokenStream::from(match res {
         Ok(res) => res,
         Err(err) => err.to_compile_error(),
-    })
-}
-
-/// Procedural macro that computes a selector for a given byte literal.
-#[proc_macro]
-pub fn selector(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as LitStr);
-
-    let str = input.value();
-    let bytes = str.as_bytes();
-
-    let selector_value = utils::compute_selector_bytes(bytes);
-
-    TokenStream::from(quote! {
-        casper_sdk::casper_executor_wasm_common::selector::Selector::new(#selector_value)
     })
 }
 

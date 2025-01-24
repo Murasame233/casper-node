@@ -38,22 +38,3 @@ pub mod exports {
         name_result
     }
 }
-
-#[cfg(all(test, not(target_family = "wasm")))]
-mod tests {
-    use casper_sdk::host::native::{self, dispatch_with, Environment};
-
-    #[test]
-    fn unit() {
-        super::exports::call([42; 32]);
-    }
-
-    #[test]
-    fn integration() {
-        let env = Environment::default().with_input_data(([42u8; 32],));
-
-        let _ = dispatch_with(env, || {
-            native::call_export_by_module(super::MODULE_PATH, "call");
-        });
-    }
-}

@@ -21,8 +21,8 @@ use casper_storage::{
 };
 use casper_types::{
     account::AccountHash, BlockHash, ChainspecRegistry, Digest, GenesisAccount, GenesisConfig, Key,
-    Motes, Phase, ProtocolVersion, PublicKey, SecretKey, StoredValue, Timestamp, TransactionHash,
-    TransactionV1Hash, U512,
+    Motes, Phase, ProtocolVersion, PublicKey, SecretKey, StorageCosts, StoredValue, SystemConfig,
+    Timestamp, TransactionHash, TransactionV1Hash, WasmConfig, U512,
 };
 use fs_extra::dir;
 use once_cell::sync::Lazy;
@@ -91,31 +91,6 @@ fn base_install_request_builder() -> InstallContractRequestBuilder {
         .with_parent_block_hash(BlockHash::new(Digest::hash(b"block1")))
 }
 
-// #[test]
-// fn test_contract() {
-//     let mut executor = make_executor();
-
-//     let (mut global_state, mut state_root_hash, _tempdir) = make_global_state_with_genesis();
-
-//     let input = ("Hello, world!".to_string(), 123456789u32);
-
-//     let address_generator = make_address_generator();
-
-//     let execute_request = base_execute_builder()
-//         .with_target(ExecutionKind::SessionBytes(VM2_TEST_CONTRACT))
-//         .with_serialized_input(input)
-//         .with_shared_address_generator(address_generator)
-//         .build()
-//         .expect("should build");
-
-//     let _effects = run_wasm_session(
-//         &mut executor,
-//         &mut global_state,
-//         state_root_hash,
-//         execute_request,
-//     );
-// }
-
 #[test]
 fn harness() {
     let mut executor = make_executor();
@@ -147,7 +122,7 @@ fn harness() {
             install_request,
         );
 
-        flipper_address = create_result.smart_contract_addr();
+        flipper_address = *create_result.smart_contract_addr();
 
         global_state
             .commit_effects(state_root_hash, create_result.effects().clone())
@@ -263,8 +238,21 @@ fn make_global_state_with_genesis() -> (LmdbGlobalState, Digest, TempDir) {
     let (global_state, _state_root_hash, _tempdir) =
         global_state::state::lmdb::make_temporary_global_state([]);
 
-    let mut genesis_config = GenesisConfig::default();
-    genesis_config.accounts(default_accounts);
+    let genesis_config = GenesisConfig::new(
+        default_accounts,
+        WasmConfig::default(),
+        SystemConfig::default(),
+        10,
+        10,
+        0,
+        Default::default(),
+        14,
+        Timestamp::now().millis(),
+        casper_types::HoldBalanceHandling::Accrued,
+        0,
+        true,
+        StorageCosts::default(),
+    );
     let genesis_request: GenesisRequest = GenesisRequest::new(
         Digest::hash("foo"),
         ProtocolVersion::V2_0_0,
@@ -331,7 +319,7 @@ fn upgradable() {
             create_request,
         );
 
-        upgradable_address = create_result.smart_contract_addr();
+        upgradable_address = *create_result.smart_contract_addr();
 
         global_state
             .commit_effects(state_root_hash, create_result.effects().clone())
@@ -339,10 +327,9 @@ fn upgradable() {
     };
 
     let version_before_upgrade = {
-        let address = upgradable_address;
         let execute_request = base_execute_builder()
             .with_target(ExecutionKind::Stored {
-                address,
+                address: upgradable_address,
                 entry_point: "version".to_string(),
             })
             .with_input(Bytes::new())
@@ -365,10 +352,9 @@ fn upgradable() {
 
     {
         // Increment the value
-        let address = upgradable_address;
         let execute_request = base_execute_builder()
             .with_target(ExecutionKind::Stored {
-                address,
+                address: upgradable_address,
                 entry_point: "increment".to_string(),
             })
             .with_input(Bytes::new())
@@ -391,11 +377,10 @@ fn upgradable() {
     let binding = VM2_UPGRADABLE_V2;
     let new_code = binding.as_ref();
 
-    let address = upgradable_address;
     let execute_request = base_execute_builder()
         .with_transferred_value(0)
         .with_target(ExecutionKind::Stored {
-            address,
+            address: upgradable_address,
             entry_point: "perform_upgrade".to_string(),
         })
         .with_gas_limit(DEFAULT_GAS_LIMIT * 10)
@@ -414,10 +399,9 @@ fn upgradable() {
         .expect("Should commit");
 
     let version_after_upgrade = {
-        let address = upgradable_address;
         let execute_request = base_execute_builder()
             .with_target(ExecutionKind::Stored {
-                address,
+                address: upgradable_address,
                 entry_point: "version".to_string(),
             })
             .with_input(Bytes::new())
@@ -440,10 +424,9 @@ fn upgradable() {
 
     {
         // Increment the value
-        let address = upgradable_address;
         let execute_request = base_execute_builder()
             .with_target(ExecutionKind::Stored {
-                address,
+                address: upgradable_address,
                 entry_point: "increment_by".to_string(),
             })
             .with_serialized_input((10u64,))
@@ -629,7 +612,7 @@ fn backwards_compatibility() {
 
     state_root_hash = create_result.post_state_hash();
 
-    let proxy_address = create_result.smart_contract_addr();
+    let proxy_address = *create_result.smart_contract_addr();
 
     // Call v2 contract
 

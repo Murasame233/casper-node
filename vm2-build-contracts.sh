@@ -2,7 +2,6 @@
 set -e
 
 VM2_BINS=(
-  #"vm2-test-contract"
   "vm2-harness"
   "vm2-cep18-caller"
 )
@@ -21,7 +20,7 @@ for contract in "${VM2_LIBS[@]}"
 do
   pushd smart_contracts/contracts/vm2/$contract/
   pwd
-  cargo +stable build --target wasm32-unknown-unknown -p $contract --lib --release
+  cargo +stable build --target wasm32-unknown-unknown -p $contract --release
   popd
 done
 
@@ -29,7 +28,7 @@ for contract in "${VM2_BINS[@]}"
 do
   pushd smart_contracts/contracts/vm2/$contract/
   pwd
-  cargo +stable build --target wasm32-unknown-unknown -p $contract --bin $contract --release
+  cargo +stable build --target wasm32-unknown-unknown -p $contract --release
   popd
 done
 
