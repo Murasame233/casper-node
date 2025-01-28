@@ -4028,3 +4028,94 @@ async fn gh_5058_regression_custom_payment_with_deploy_variant_works() {
 
     assert_eq!(exec_result.error_message(), None);
 }
+
+#[tokio::test]
+async fn gh_5082_install_upgrade_should_allow_adding_new_version() {
+    let config = SingleTransactionTestCase::default_test_config()
+        .with_pricing_handling(PricingHandling::Classic)
+        .with_refund_handling(RefundHandling::NoRefund)
+        .with_fee_handling(FeeHandling::NoFee);
+
+    let mut test = SingleTransactionTestCase::new(
+        ALICE_SECRET_KEY.clone(),
+        BOB_SECRET_KEY.clone(),
+        CHARLIE_SECRET_KEY.clone(),
+        Some(config),
+    )
+    .await;
+
+    test.fixture
+        .run_until_consensus_in_era(ERA_ONE, ONE_MIN)
+        .await;
+
+    // This WASM creates named key called "new_key". Then it would loop endlessly trying to write a
+    // value to storage. Eventually it will run out of gas and it should exit causing a revert.
+    let base_path = RESOURCES_PATH
+        .parent()
+        .unwrap()
+        .join("target")
+        .join("wasm32-unknown-unknown")
+        .join("release");
+
+    let txn_1 = {
+        let chain_name = test.chainspec().network_config.name.clone();
+
+        let module_bytes = std::fs::read(base_path.join("do_nothing_stored.wasm")).unwrap();
+        let mut txn = Transaction::from(
+            TransactionV1Builder::new_session(
+                true,
+                module_bytes.into(),
+                TransactionRuntimeParams::VmCasperV1,
+            )
+            .with_initiator_addr(ALICE_PUBLIC_KEY.clone())
+            .with_pricing_mode(PricingMode::PaymentLimited {
+                payment_amount: 100_000_000_000u64,
+                gas_price_tolerance: 1,
+                standard_payment: true,
+            })
+            .with_chain_name(chain_name)
+            .build()
+            .unwrap(),
+        );
+        txn.sign(&ALICE_SECRET_KEY);
+        txn
+    };
+
+    let (_txn_hash, _block_height, exec_result_1) = test.send_transaction(txn_1).await;
+
+    assert_eq!(exec_result_1.error_message(), None); // should succeed
+
+    let txn_2 = {
+        let chain_name = test.chainspec().network_config.name.clone();
+
+        let module_bytes = std::fs::read(base_path.join("do_nothing_stored.wasm")).unwrap();
+        let mut txn = Transaction::from(
+            TransactionV1Builder::new_session(
+                true,
+                module_bytes.into(),
+                TransactionRuntimeParams::VmCasperV1,
+            )
+            .with_initiator_addr(BOB_PUBLIC_KEY.clone())
+            .with_pricing_mode(PricingMode::PaymentLimited {
+                payment_amount: 100_000_000_000u64,
+                gas_price_tolerance: 1,
+                // This is the key part of the test: we are using `standard_payment == false` to use
+                // session code as payment code. This should fail to add new
+                // contract version.
+                standard_payment: false,
+            })
+            .with_chain_name(chain_name)
+            .build()
+            .unwrap(),
+        );
+        txn.sign(&BOB_SECRET_KEY);
+        txn
+    };
+
+    let (_txn_hash, _block_height, exec_result_2) = test.send_transaction(txn_2).await;
+
+    assert_eq!(
+        exec_result_2.error_message(),
+        Some("ApiError::NotAllowedToAddContractVersion [48]".to_string())
+    ); // should not succeed, adding new contract version during payment is not allowed.
+}
