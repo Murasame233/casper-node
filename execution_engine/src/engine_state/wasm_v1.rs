@@ -7,8 +7,8 @@ use casper_storage::{data_access_layer::TransferResult, tracking_copy::TrackingC
 use casper_types::{
     account::AccountHash, bytesrepr::Bytes, contract_messages::Messages, execution::Effects,
     BlockHash, BlockTime, CLValue, DeployHash, Digest, ExecutableDeployItem, Gas, InitiatorAddr,
-    PackageHash, Phase, PricingMode, RuntimeArgs, TransactionEntryPoint, TransactionHash,
-    TransactionInvocationTarget, TransactionTarget, TransactionV1Hash, Transfer,
+    PackageHash, Phase, PricingMode, ProtocolVersion, RuntimeArgs, TransactionEntryPoint,
+    TransactionHash, TransactionInvocationTarget, TransactionTarget, TransactionV1Hash, Transfer,
 };
 
 use crate::engine_state::Error as EngineError;
@@ -273,6 +273,8 @@ pub struct BlockInfo {
     pub parent_block_hash: BlockHash,
     /// Block height
     pub block_height: u64,
+    /// Protocol version
+    pub protocol_version: ProtocolVersion,
 }
 
 impl BlockInfo {
@@ -282,12 +284,14 @@ impl BlockInfo {
         block_time: BlockTime,
         parent_block_hash: BlockHash,
         block_height: u64,
+        protocol_version: ProtocolVersion,
     ) -> Self {
         BlockInfo {
             state_hash,
             block_time,
             parent_block_hash,
             block_height,
+            protocol_version,
         }
     }
 

@@ -115,7 +115,7 @@ pub enum BlockGlobalAddr {
     /// Message count variant.
     MessageCount,
     /// Protocol version.
-    ProtocolVersion
+    ProtocolVersion,
 }
 
 impl BlockGlobalAddr {
@@ -132,7 +132,7 @@ impl BlockGlobalAddr {
         match self {
             BlockGlobalAddr::MessageCount => BlockGlobalAddrTag::MessageCount,
             BlockGlobalAddr::BlockTime => BlockGlobalAddrTag::BlockTime,
-            BlockGlobalAddr::ProtocolVersion => BlockGlobalAddrTag::ProtocolVersion
+            BlockGlobalAddr::ProtocolVersion => BlockGlobalAddrTag::ProtocolVersion,
         }
     }
 
@@ -141,7 +141,9 @@ impl BlockGlobalAddr {
         match self {
             BlockGlobalAddr::BlockTime => base16::encode_lower(&BLOCK_TIME_TAG.to_le_bytes()),
             BlockGlobalAddr::MessageCount => base16::encode_lower(&MESSAGE_COUNT_TAG.to_le_bytes()),
-            BlockGlobalAddr::ProtocolVersion => base16::encode_lower(&PROTOCOL_VERSION_TAG.to_le_bytes())
+            BlockGlobalAddr::ProtocolVersion => {
+                base16::encode_lower(&PROTOCOL_VERSION_TAG.to_le_bytes())
+            }
         }
     }
 
@@ -167,7 +169,7 @@ impl BlockGlobalAddr {
         match tag {
             BlockGlobalAddrTag::BlockTime => Ok(BlockGlobalAddr::BlockTime),
             BlockGlobalAddrTag::MessageCount => Ok(BlockGlobalAddr::MessageCount),
-            BlockGlobalAddrTag::ProtocolVersion => Ok(BlockGlobalAddr::ProtocolVersion)
+            BlockGlobalAddrTag::ProtocolVersion => Ok(BlockGlobalAddr::ProtocolVersion),
         }
     }
 }

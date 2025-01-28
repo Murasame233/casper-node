@@ -6,8 +6,8 @@ use casper_engine_test_support::{
 use casper_execution_engine::{engine_state::BlockInfo, execution::ExecError};
 use casper_storage::data_access_layer::BalanceIdentifier;
 use casper_types::{
-    account::AccountHash, runtime_args, ApiError, BlockHash, Digest, Gas, RuntimeArgs, Timestamp,
-    U512,
+    account::AccountHash, runtime_args, ApiError, BlockHash, Digest, Gas, ProtocolVersion,
+    RuntimeArgs, Timestamp, U512,
 };
 
 const ACCOUNT_1_ADDR: AccountHash = AccountHash::new([42u8; 32]);
@@ -92,7 +92,13 @@ fn should_charge_non_main_purse() {
 
     let block_time = Timestamp::now().millis();
     let parent_block_hash = BlockHash::default();
-    let block_info = BlockInfo::new(Digest::default(), block_time.into(), parent_block_hash, 1);
+    let block_info = BlockInfo::new(
+        Digest::default(),
+        block_time.into(),
+        parent_block_hash,
+        1,
+        DEFAULT_PROTOCOL_VERSION,
+    );
     builder
         .exec_wasm_v1(
             deploy_item
@@ -154,6 +160,7 @@ fn should_not_allow_custom_payment_purse_persistence_1() {
         Timestamp::now().millis().into(),
         BlockHash::default(),
         1,
+        DEFAULT_PROTOCOL_VERSION,
     );
     let limit = Gas::from(12_500_000_000_u64);
 
@@ -192,6 +199,7 @@ fn should_not_allow_custom_payment_purse_persistence_2() {
         Timestamp::now().millis().into(),
         BlockHash::default(),
         1,
+        DEFAULT_PROTOCOL_VERSION,
     );
     let limit = Gas::from(12_500_000_000_u64);
 
@@ -230,6 +238,7 @@ fn should_not_allow_custom_payment_purse_persistence_3() {
         Timestamp::now().millis().into(),
         BlockHash::default(),
         1,
+        DEFAULT_PROTOCOL_VERSION,
     );
     let limit = Gas::from(12_500_000_000_u64);
 

@@ -330,7 +330,13 @@ pub fn execute_finalized_block(
                 let payment_input_data = transaction.to_payment_input_data();
 
                 let pay_result = match WasmV1Request::new_custom_payment(
-                    BlockInfo::new(state_root_hash, block_time, parent_block_hash, block_height),
+                    BlockInfo::new(
+                        state_root_hash,
+                        block_time,
+                        parent_block_hash,
+                        block_height,
+                        protocol_version,
+                    ),
                     custom_payment_gas_limit,
                     &payment_input_data,
                 ) {
@@ -526,6 +532,7 @@ pub fn execute_finalized_block(
                             block_time,
                             parent_block_hash,
                             block_height,
+                            protocol_version,
                         ),
                         gas_limit,
                         &session_input_data,
@@ -1236,6 +1243,7 @@ where
                 block_time.into(),
                 parent_block_hash,
                 block_height,
+                execution_engine_v1.config().protocol_version(),
             );
             let session_input_data = transaction.to_session_input_data();
             let wasm_v1_result =

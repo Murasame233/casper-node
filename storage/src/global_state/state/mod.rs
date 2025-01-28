@@ -666,17 +666,19 @@ pub trait CommitProvider: StateProvider {
                 );
             }
             BlockGlobalKind::ProtocolVersion(protocol_version) => {
-                let cl_value = match CLValue::from_t(protocol_version.destructure()).map_err(TrackingCopyError::CLValue) {
+                let cl_value = match CLValue::from_t(protocol_version.destructure())
+                    .map_err(TrackingCopyError::CLValue)
+                {
                     Ok(cl_value) => cl_value,
                     Err(tce) => {
                         return BlockGlobalResult::Failure(tce);
-                    },
+                    }
                 };
                 tc.borrow_mut().write(
                     Key::BlockGlobal(BlockGlobalAddr::ProtocolVersion),
                     StoredValue::CLValue(cl_value),
                 );
-            },
+            }
         }
 
         let effects = tc.borrow_mut().effects();

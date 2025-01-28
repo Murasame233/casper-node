@@ -44,10 +44,7 @@ impl BlockGlobalRequest {
     }
 
     /// Returns protocol version setting request.
-    pub fn set_protocol_version(
-        state_hash: Digest,
-        protocol_version: ProtocolVersion,
-    ) -> Self {
+    pub fn set_protocol_version(state_hash: Digest, protocol_version: ProtocolVersion) -> Self {
         let block_global_kind = BlockGlobalKind::ProtocolVersion(protocol_version);
         BlockGlobalRequest {
             state_hash,
