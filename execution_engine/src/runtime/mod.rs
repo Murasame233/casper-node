@@ -477,7 +477,8 @@ where
                 .map_err(ExecError::BytesRepr)?;
         }
         if field_idx == 4 {
-            data = self.context
+            data = self
+                .context
                 .protocol_version()
                 .into_bytes()
                 .map_err(ExecError::BytesRepr)?;
