@@ -938,6 +938,17 @@ impl Key {
             return Ok(BlockGlobalAddr::MessageCount.into());
         }
 
+        if let Some(protocol_version) = input.strip_prefix(BLOCK_GLOBAL_PROTOCOL_VERSION_PREFIX) {
+            let padded_bytes = checksummed_hex::decode(protocol_version)
+                .map_err(|error| FromStrError::BlockGlobal(error.to_string()))?;
+            let _padding: [u8; 31] = TryFrom::try_from(padded_bytes.as_ref()).map_err(|_| {
+                FromStrError::BlockGlobal(
+                    "Failed to deserialize global block protocol version key".to_string(),
+                )
+            })?;
+            return Ok(BlockGlobalAddr::ProtocolVersion.into());
+        }
+
         match EntryPointAddr::from_formatted_str(input) {
             Ok(entry_point_addr) => return Ok(Key::EntryPoint(entry_point_addr)),
             Err(addressable_entity::FromStrError::InvalidPrefix) => {}
