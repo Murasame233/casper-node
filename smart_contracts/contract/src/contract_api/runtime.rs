@@ -310,7 +310,7 @@ pub fn get_state_hash() -> Digest {
     bytesrepr::deserialize(bytes).unwrap_or_revert()
 }
 
-/// Returns the state root hash.
+/// Returns the protocol version.
 pub fn get_protocol_version() -> ProtocolVersion {
     let dest_non_null_ptr = contract_api::alloc_bytes(PROTOCOL_VERSION_LENGTH as usize);
     let bytes = unsafe {

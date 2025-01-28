@@ -6,8 +6,8 @@ use casper_engine_test_support::{
 use casper_execution_engine::{engine_state::BlockInfo, execution::ExecError};
 use casper_storage::data_access_layer::BalanceIdentifier;
 use casper_types::{
-    account::AccountHash, runtime_args, ApiError, BlockHash, Digest, Gas, ProtocolVersion,
-    RuntimeArgs, Timestamp, U512,
+    account::AccountHash, runtime_args, ApiError, BlockHash, Digest, Gas, RuntimeArgs, Timestamp,
+    U512,
 };
 
 const ACCOUNT_1_ADDR: AccountHash = AccountHash::new([42u8; 32]);
