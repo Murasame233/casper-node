@@ -2265,7 +2265,7 @@ impl Storage {
             .expect("could not retrieve value from storage")
     }
 
-    pub(crate) fn read_signed_block_by_hash(
+    pub(crate) fn read_block_with_signatures_by_hash(
         &self,
         block_hash: BlockHash,
         only_from_available_block_range: bool,
@@ -2300,7 +2300,7 @@ impl Storage {
         Some(BlockWithSignatures::new(block, block_signatures))
     }
 
-    pub(crate) fn read_signed_block_by_height(
+    pub(crate) fn read_block_with_signatures_by_height(
         &self,
         height: u64,
         only_from_available_block_range: bool,
@@ -2321,7 +2321,7 @@ impl Storage {
         Some(BlockWithSignatures::new(block, block_signatures))
     }
 
-    pub(crate) fn read_highest_signed_block(
+    pub(crate) fn read_highest_block_with_signatures(
         &self,
         only_from_available_block_range: bool,
     ) -> Option<BlockWithSignatures> {
