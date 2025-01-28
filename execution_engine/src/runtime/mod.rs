@@ -476,6 +476,12 @@ where
                 .into_bytes()
                 .map_err(ExecError::BytesRepr)?;
         }
+        if field_idx == 4 {
+            data = self.context
+                .protocol_version()
+                .into_bytes()
+                .map_err(ExecError::BytesRepr)?;
+        }
         if data.is_empty() {
             Err(ExecError::InvalidImputedOperation.into())
         } else {

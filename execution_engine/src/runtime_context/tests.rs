@@ -182,7 +182,7 @@ fn new_runtime_context<'a>(
             Digest::default(),
             BlockTime::new(0),
             BlockHash::default(),
-            0,
+            0
         ),
         ProtocolVersion::V1_0_0,
         TransactionHash::V1(TransactionV1Hash::from_raw([1u8; 32])),
@@ -463,7 +463,7 @@ fn contract_key_addable_valid() {
             Digest::default(),
             BlockTime::new(0),
             BlockHash::default(),
-            0,
+            0
         ),
         ProtocolVersion::V1_0_0,
         TransactionHash::V1(TransactionV1Hash::from_raw(TXN_HASH_RAW)),
