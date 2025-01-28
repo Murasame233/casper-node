@@ -419,7 +419,7 @@ async fn binary_port_component_handles_all_requests() {
 
     let test_cases = &[
         block_header_info(*highest_block.hash()),
-        signed_block_info(*highest_block.hash()),
+        block_with_signatures_info(*highest_block.hash()),
         peers(),
         uptime(),
         last_progress(),
@@ -568,9 +568,9 @@ fn block_header_info(hash: BlockHash) -> TestCase {
     }
 }
 
-fn signed_block_info(hash: BlockHash) -> TestCase {
+fn block_with_signatures_info(hash: BlockHash) -> TestCase {
     TestCase {
-        name: "signed_block_info",
+        name: "block_with_signatures_info",
         request: BinaryRequest::Get(
             InformationRequest::BlockWithSignatures(Some(BlockIdentifier::Hash(hash)))
                 .try_into()
