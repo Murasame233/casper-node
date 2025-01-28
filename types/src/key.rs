@@ -76,6 +76,7 @@ const BID_ADDR_PREFIX: &str = "bid-addr-";
 const PACKAGE_PREFIX: &str = "package-";
 const BLOCK_GLOBAL_TIME_PREFIX: &str = "block-time-";
 const BLOCK_GLOBAL_MESSAGE_COUNT_PREFIX: &str = "block-message-count-";
+const BLOCK_GLOBAL_PROTOCOL_VERSION_PREFIX: &str = "block-protocol-version-";
 const STATE_PREFIX: &str = "state-";
 
 /// The number of bytes in a Blake2b hash
@@ -641,6 +642,7 @@ impl Key {
                 let prefix = match addr {
                     BlockGlobalAddr::BlockTime => BLOCK_GLOBAL_TIME_PREFIX,
                     BlockGlobalAddr::MessageCount => BLOCK_GLOBAL_MESSAGE_COUNT_PREFIX,
+                    BlockGlobalAddr::ProtocolVersion => BLOCK_GLOBAL_PROTOCOL_VERSION_PREFIX,
                 };
                 format!(
                     "{}{}",
@@ -2714,6 +2716,7 @@ mod tests {
         round_trip(&Key::NamedKey(NamedKeyAddr::default()));
         round_trip(&Key::BlockGlobal(BlockGlobalAddr::BlockTime));
         round_trip(&Key::BlockGlobal(BlockGlobalAddr::MessageCount));
+        round_trip(&Key::BlockGlobal(BlockGlobalAddr::ProtocolVersion));
         round_trip(&Key::BalanceHold(BalanceHoldAddr::default()));
         round_trip(&Key::State(EntityAddr::new_system(zeros)));
     }

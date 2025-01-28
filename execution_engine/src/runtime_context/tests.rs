@@ -149,6 +149,12 @@ fn new_runtime_context<'a>(
     let stored_value = StoredValue::CLValue(cl_value);
     tracking_copy.write(Key::BlockGlobal(BlockGlobalAddr::BlockTime), stored_value);
 
+    // write protocol version to gs
+    let protocol_version = ProtocolVersion::V1_0_0;
+    let cl_value = CLValue::from_t(protocol_version.destructure()).expect("should get cl_value");
+    let stored_value = StoredValue::CLValue(cl_value);
+    tracking_copy.write(Key::BlockGlobal(BlockGlobalAddr::ProtocolVersion), stored_value);
+
     let addr = match entity_address {
         Key::AddressableEntity(entity_addr) => entity_addr,
         Key::Account(account_hash) => EntityAddr::Account(account_hash.value()),
