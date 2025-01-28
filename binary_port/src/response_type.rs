@@ -11,8 +11,8 @@ use casper_types::{
     contracts::ContractPackage,
     execution::{ExecutionResult, ExecutionResultV1},
     AvailableBlockRange, BlockBody, BlockBodyV1, BlockHeader, BlockHeaderV1, BlockSignatures,
-    BlockSignaturesV1, BlockSynchronizerStatus, ChainspecRawBytes, Deploy, NextUpgrade, Package,
-    Peers, ProtocolVersion, SignedBlock, StoredValue, Transaction, Transfer,
+    BlockSignaturesV1, BlockSynchronizerStatus, BlockWithSignatures, ChainspecRawBytes, Deploy,
+    NextUpgrade, Package, Peers, ProtocolVersion, StoredValue, Transaction, Transfer,
 };
 
 use crate::{
@@ -346,7 +346,7 @@ impl PayloadEntity for ExecutionResultV1 {
     const RESPONSE_TYPE: ResponseType = ResponseType::ExecutionResultV1;
 }
 
-impl PayloadEntity for SignedBlock {
+impl PayloadEntity for BlockWithSignatures {
     const RESPONSE_TYPE: ResponseType = ResponseType::SignedBlock;
 }
 
