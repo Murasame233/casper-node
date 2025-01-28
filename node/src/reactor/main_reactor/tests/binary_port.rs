@@ -572,14 +572,14 @@ fn signed_block_info(hash: BlockHash) -> TestCase {
     TestCase {
         name: "signed_block_info",
         request: BinaryRequest::Get(
-            InformationRequest::SignedBlock(Some(BlockIdentifier::Hash(hash)))
+            InformationRequest::BlockWithSignatures(Some(BlockIdentifier::Hash(hash)))
                 .try_into()
                 .expect("should convert"),
         ),
         asserter: Box::new(move |response| {
             assert_response::<BlockWithSignatures, _>(
                 response,
-                Some(ResponseType::SignedBlock),
+                Some(ResponseType::BlockWithSignatures),
                 |header| *header.block().hash() == hash,
             )
         }),

@@ -1068,7 +1068,7 @@ where
             let maybe_header = resolve_block_header(effect_builder, identifier).await;
             BinaryResponse::from_option(maybe_header, protocol_version)
         }
-        InformationRequest::SignedBlock(identifier) => {
+        InformationRequest::BlockWithSignatures(identifier) => {
             let Some(height) = resolve_block_height(effect_builder, identifier).await else {
                 return BinaryResponse::new_empty(protocol_version);
             };

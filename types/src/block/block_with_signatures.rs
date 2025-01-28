@@ -22,7 +22,7 @@ pub struct BlockWithSignatures {
 }
 
 impl BlockWithSignatures {
-    /// Creates a new `SignedBlock`.
+    /// Creates a new `BlockWithSignatures`.
     pub fn new(block: Block, block_signatures: BlockSignatures) -> Self {
         Self {
             block,
