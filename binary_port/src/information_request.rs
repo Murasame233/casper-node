@@ -19,7 +19,8 @@ use casper_types::{
 pub enum InformationRequest {
     /// Returns the block header by an identifier, no identifier indicates the latest block.
     BlockHeader(Option<BlockIdentifier>),
-    /// Returns the block with signatures by an identifier, no identifier indicates the latest block.
+    /// Returns the block with signatures by an identifier, no identifier indicates the latest
+    /// block.
     BlockWithSignatures(Option<BlockIdentifier>),
     /// Returns a transaction with approvals and execution info for a given hash.
     Transaction {
