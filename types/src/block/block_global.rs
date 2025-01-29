@@ -59,6 +59,9 @@ impl BlockGlobalAddrTag {
         if value == MESSAGE_COUNT_TAG {
             return Some(BlockGlobalAddrTag::MessageCount);
         }
+        if value == PROTOCOL_VERSION_TAG {
+            return Some(BlockGlobalAddrTag::ProtocolVersion);
+        }
         None
     }
 }
@@ -196,6 +199,9 @@ impl FromBytes for BlockGlobalAddr {
             tag if tag == BlockGlobalAddrTag::MessageCount as u8 => {
                 Ok((BlockGlobalAddr::MessageCount, remainder))
             }
+            tag if tag == BlockGlobalAddrTag::ProtocolVersion as u8 => {
+                Ok((BlockGlobalAddr::ProtocolVersion, remainder))
+            }
             _ => Err(bytesrepr::Error::Formatting),
         }
     }
@@ -240,9 +246,10 @@ impl Debug for BlockGlobalAddr {
 #[cfg(any(feature = "testing", test))]
 impl Distribution<BlockGlobalAddr> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> BlockGlobalAddr {
-        match rng.gen_range(BLOCK_TIME_TAG..=MESSAGE_COUNT_TAG) {
+        match rng.gen_range(BLOCK_TIME_TAG..=PROTOCOL_VERSION_TAG) {
             BLOCK_TIME_TAG => BlockGlobalAddr::BlockTime,
             MESSAGE_COUNT_TAG => BlockGlobalAddr::MessageCount,
+            PROTOCOL_VERSION_TAG => BlockGlobalAddr::ProtocolVersion,
             _ => unreachable!(),
         }
     }
@@ -257,6 +264,8 @@ mod tests {
         let addr = BlockGlobalAddr::BlockTime;
         bytesrepr::test_serialization_roundtrip(&addr);
         let addr = BlockGlobalAddr::MessageCount;
+        bytesrepr::test_serialization_roundtrip(&addr);
+        let addr = BlockGlobalAddr::ProtocolVersion;
         bytesrepr::test_serialization_roundtrip(&addr);
     }
 }
