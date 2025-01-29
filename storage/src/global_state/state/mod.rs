@@ -679,6 +679,20 @@ pub trait CommitProvider: StateProvider {
                     StoredValue::CLValue(cl_value),
                 );
             }
+            BlockGlobalKind::AddressableEntity(addressable_entity) => {
+                let cl_value = match CLValue::from_t(addressable_entity)
+                    .map_err(TrackingCopyError::CLValue)
+                {
+                    Ok(cl_value) => cl_value,
+                    Err(tce) => {
+                        return BlockGlobalResult::Failure(tce);
+                    }
+                };
+                tc.borrow_mut().write(
+                    Key::BlockGlobal(BlockGlobalAddr::AddressableEntity),
+                    StoredValue::CLValue(cl_value),
+                );
+            }
         }
 
         let effects = tc.borrow_mut().effects();

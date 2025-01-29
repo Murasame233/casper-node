@@ -28,6 +28,7 @@ use serde::{Deserialize, Serialize};
 const BLOCK_TIME_TAG: u8 = 0;
 const MESSAGE_COUNT_TAG: u8 = 1;
 const PROTOCOL_VERSION_TAG: u8 = 2;
+const ADDRESSABLE_ENTITY_TAG: u8 = 3;
 
 /// Serialization tag for BlockGlobalAddr variants.
 #[derive(
@@ -44,6 +45,8 @@ pub enum BlockGlobalAddrTag {
     MessageCount = MESSAGE_COUNT_TAG,
     /// Tag for protocol version variant.
     ProtocolVersion = PROTOCOL_VERSION_TAG,
+    /// Tag for addressable entity variant.
+    AddressableEntity = ADDRESSABLE_ENTITY_TAG,
 }
 
 impl BlockGlobalAddrTag {
@@ -62,6 +65,9 @@ impl BlockGlobalAddrTag {
         if value == PROTOCOL_VERSION_TAG {
             return Some(BlockGlobalAddrTag::ProtocolVersion);
         }
+        if value == ADDRESSABLE_ENTITY_TAG {
+            return Some(BlockGlobalAddrTag::AddressableEntity);
+        }
         None
     }
 }
@@ -72,6 +78,7 @@ impl Display for BlockGlobalAddrTag {
             BlockGlobalAddrTag::BlockTime => BLOCK_TIME_TAG,
             BlockGlobalAddrTag::MessageCount => MESSAGE_COUNT_TAG,
             BlockGlobalAddrTag::ProtocolVersion => PROTOCOL_VERSION_TAG,
+            BlockGlobalAddrTag::AddressableEntity => ADDRESSABLE_ENTITY_TAG,
         };
         write!(f, "{}", base16::encode_lower(&[tag]))
     }
@@ -119,6 +126,8 @@ pub enum BlockGlobalAddr {
     MessageCount,
     /// Protocol version.
     ProtocolVersion,
+    /// Addressable entity.
+    AddressableEntity,
 }
 
 impl BlockGlobalAddr {
@@ -136,6 +145,7 @@ impl BlockGlobalAddr {
             BlockGlobalAddr::MessageCount => BlockGlobalAddrTag::MessageCount,
             BlockGlobalAddr::BlockTime => BlockGlobalAddrTag::BlockTime,
             BlockGlobalAddr::ProtocolVersion => BlockGlobalAddrTag::ProtocolVersion,
+            BlockGlobalAddr::AddressableEntity => BlockGlobalAddrTag::AddressableEntity,
         }
     }
 
@@ -146,7 +156,10 @@ impl BlockGlobalAddr {
             BlockGlobalAddr::MessageCount => base16::encode_lower(&MESSAGE_COUNT_TAG.to_le_bytes()),
             BlockGlobalAddr::ProtocolVersion => {
                 base16::encode_lower(&PROTOCOL_VERSION_TAG.to_le_bytes())
-            }
+            },
+            BlockGlobalAddr::AddressableEntity => {
+                base16::encode_lower(&ADDRESSABLE_ENTITY_TAG.to_le_bytes())
+            },
         }
     }
 
@@ -173,6 +186,7 @@ impl BlockGlobalAddr {
             BlockGlobalAddrTag::BlockTime => Ok(BlockGlobalAddr::BlockTime),
             BlockGlobalAddrTag::MessageCount => Ok(BlockGlobalAddr::MessageCount),
             BlockGlobalAddrTag::ProtocolVersion => Ok(BlockGlobalAddr::ProtocolVersion),
+            BlockGlobalAddrTag::AddressableEntity => Ok(BlockGlobalAddr::AddressableEntity),
         }
     }
 }
@@ -201,6 +215,9 @@ impl FromBytes for BlockGlobalAddr {
             }
             tag if tag == BlockGlobalAddrTag::ProtocolVersion as u8 => {
                 Ok((BlockGlobalAddr::ProtocolVersion, remainder))
+            }
+            tag if tag == BlockGlobalAddrTag::AddressableEntity as u8 => {
+                Ok((BlockGlobalAddr::AddressableEntity, remainder))
             }
             _ => Err(bytesrepr::Error::Formatting),
         }
@@ -239,6 +256,7 @@ impl Debug for BlockGlobalAddr {
             BlockGlobalAddr::BlockTime => write!(f, "BlockTime",),
             BlockGlobalAddr::MessageCount => write!(f, "MessageCount",),
             BlockGlobalAddr::ProtocolVersion => write!(f, "ProtocolVersion"),
+            BlockGlobalAddr::AddressableEntity => write!(f, "AddressableEntity"),
         }
     }
 }
@@ -250,6 +268,7 @@ impl Distribution<BlockGlobalAddr> for Standard {
             BLOCK_TIME_TAG => BlockGlobalAddr::BlockTime,
             MESSAGE_COUNT_TAG => BlockGlobalAddr::MessageCount,
             PROTOCOL_VERSION_TAG => BlockGlobalAddr::ProtocolVersion,
+            ADDRESSABLE_ENTITY_TAG => BlockGlobalAddr::AddressableEntity,
             _ => unreachable!(),
         }
     }
@@ -266,6 +285,8 @@ mod tests {
         let addr = BlockGlobalAddr::MessageCount;
         bytesrepr::test_serialization_roundtrip(&addr);
         let addr = BlockGlobalAddr::ProtocolVersion;
+        bytesrepr::test_serialization_roundtrip(&addr);
+        let addr = BlockGlobalAddr::AddressableEntity;
         bytesrepr::test_serialization_roundtrip(&addr);
     }
 }

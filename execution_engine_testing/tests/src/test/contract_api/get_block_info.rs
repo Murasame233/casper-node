@@ -136,3 +136,30 @@ fn should_run_get_protocol_version() {
 
     builder.exec(exec_request).expect_success().commit();
 }
+
+const FIELD_IDX_ADDRESSABLE_ENTITY: u8 = 5;
+const ARG_KNOWN_ADDRESSABLE_ENTITY: &str = "known_addressable_entity";
+
+#[ignore]
+#[test]
+fn should_run_get_addressable_entity() {
+    let addressable_entity: bool = false;
+    let addressable_entity_bytes = addressable_entity.to_bytes().expect("should_serialize");
+    let bytes = casper_types::bytesrepr::Bytes::from(addressable_entity_bytes);
+
+    let exec_request = ExecuteRequestBuilder::standard(
+        *DEFAULT_ACCOUNT_ADDR,
+        CONTRACT_GET_BLOCKINFO,
+        runtime_args! {
+            ARG_FIELD_IDX => FIELD_IDX_ADDRESSABLE_ENTITY,
+            ARG_KNOWN_ADDRESSABLE_ENTITY => bytes
+        },
+    )
+    .build();
+    
+    LmdbWasmTestBuilder::default()
+        .run_genesis(LOCAL_GENESIS_REQUEST.clone())
+        .exec(exec_request)
+        .commit()
+        .expect_success();
+}

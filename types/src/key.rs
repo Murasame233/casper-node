@@ -77,6 +77,7 @@ const PACKAGE_PREFIX: &str = "package-";
 const BLOCK_GLOBAL_TIME_PREFIX: &str = "block-time-";
 const BLOCK_GLOBAL_MESSAGE_COUNT_PREFIX: &str = "block-message-count-";
 const BLOCK_GLOBAL_PROTOCOL_VERSION_PREFIX: &str = "block-protocol-version-";
+const BLOCK_GLOBAL_ADDRESSABLE_ENTITY_PREFIX: &str = "block-addressable-entity-";
 const STATE_PREFIX: &str = "state-";
 
 /// The number of bytes in a Blake2b hash
@@ -643,6 +644,7 @@ impl Key {
                     BlockGlobalAddr::BlockTime => BLOCK_GLOBAL_TIME_PREFIX,
                     BlockGlobalAddr::MessageCount => BLOCK_GLOBAL_MESSAGE_COUNT_PREFIX,
                     BlockGlobalAddr::ProtocolVersion => BLOCK_GLOBAL_PROTOCOL_VERSION_PREFIX,
+                    BlockGlobalAddr::AddressableEntity=> BLOCK_GLOBAL_ADDRESSABLE_ENTITY_PREFIX,
                 };
                 format!(
                     "{}{}",
@@ -947,6 +949,17 @@ impl Key {
                 )
             })?;
             return Ok(BlockGlobalAddr::ProtocolVersion.into());
+        }
+
+        if let Some(addressable_entity) = input.strip_prefix(BLOCK_GLOBAL_ADDRESSABLE_ENTITY_PREFIX) {
+            let padded_bytes = checksummed_hex::decode(addressable_entity)
+                .map_err(|error| FromStrError::BlockGlobal(error.to_string()))?;
+            let _padding: [u8; 31] = TryFrom::try_from(padded_bytes.as_ref()).map_err(|_| {
+                FromStrError::BlockGlobal(
+                    "Failed to deserialize global block addressable entity key".to_string(),
+                )
+            })?;
+            return Ok(BlockGlobalAddr::AddressableEntity.into());
         }
 
         match EntryPointAddr::from_formatted_str(input) {

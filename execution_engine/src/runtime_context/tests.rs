@@ -158,6 +158,14 @@ fn new_runtime_context<'a>(
         stored_value,
     );
 
+    // write the addressable entity flag to gs
+    let cl_value = CLValue::from_t(false).expect("should get cl_value");
+    let stored_value = StoredValue::CLValue(cl_value);
+    tracking_copy.write(
+        Key::BlockGlobal(BlockGlobalAddr::AddressableEntity),
+        stored_value,
+    );
+
     let addr = match entity_address {
         Key::AddressableEntity(entity_addr) => entity_addr,
         Key::Account(account_hash) => EntityAddr::Account(account_hash.value()),
