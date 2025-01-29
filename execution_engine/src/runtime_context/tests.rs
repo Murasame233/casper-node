@@ -61,7 +61,7 @@ fn new_addressable_entity_with_purse(
     let entity = AddressableEntity::new(
         PackageHash::default(),
         ByteCodeHash::default(),
-        ProtocolVersion::V1_0_0,
+        ProtocolVersion::V2_0_0,
         URef::new(purse, AccessRights::READ_ADD_WRITE),
         associated_keys,
         Default::default(),
@@ -150,7 +150,7 @@ fn new_runtime_context<'a>(
     tracking_copy.write(Key::BlockGlobal(BlockGlobalAddr::BlockTime), stored_value);
 
     // write protocol version to gs
-    let protocol_version = ProtocolVersion::V1_0_0;
+    let protocol_version = ProtocolVersion::V2_0_0;
     let cl_value = CLValue::from_t(protocol_version.destructure()).expect("should get cl_value");
     let stored_value = StoredValue::CLValue(cl_value);
     tracking_copy.write(
@@ -192,7 +192,7 @@ fn new_runtime_context<'a>(
             BlockTime::new(0),
             BlockHash::default(),
             0,
-            ProtocolVersion::V1_0_0,
+            ProtocolVersion::V2_0_0,
         ),
         TransactionHash::V1(TransactionV1Hash::from_raw([1u8; 32])),
         Phase::Session,
@@ -473,7 +473,7 @@ fn contract_key_addable_valid() {
             BlockTime::new(0),
             BlockHash::default(),
             0,
-            ProtocolVersion::V1_0_0,
+            ProtocolVersion::V2_0_0,
         ),
         TransactionHash::V1(TransactionV1Hash::from_raw(TXN_HASH_RAW)),
         PHASE,
@@ -550,7 +550,7 @@ fn contract_key_addable_invalid() {
             BlockTime::new(0),
             BlockHash::default(),
             0,
-            ProtocolVersion::V1_0_0,
+            ProtocolVersion::V2_0_0,
         ),
         TransactionHash::V1(TransactionV1Hash::from_raw(TXN_HASH_RAW)),
         PHASE,
