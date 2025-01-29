@@ -16,13 +16,15 @@ const FIELD_IDX_BLOCK_HEIGHT: u8 = 1;
 const FIELD_IDX_PARENT_BLOCK_HASH: u8 = 2;
 const FIELD_IDX_STATE_HASH: u8 = 3;
 const FIELD_IDX_PROTOCOL_VERSION: u8 = 4;
+const FIELD_IDX_ADDRESSABLE_ENTITY: u8 = 5;
 
-const CURRENT_UBOUND: u8 = FIELD_IDX_PROTOCOL_VERSION;
+const CURRENT_UBOUND: u8 = FIELD_IDX_ADDRESSABLE_ENTITY;
 const ARG_KNOWN_BLOCK_TIME: &str = "known_block_time";
 const ARG_KNOWN_BLOCK_HEIGHT: &str = "known_block_height";
 const ARG_KNOWN_BLOCK_PARENT_HASH: &str = "known_block_parent_hash";
 const ARG_KNOWN_STATE_HASH: &str = "known_state_hash";
 const ARG_KNOWN_PROTOCOL_VERSION: &str = "known_protocol_version";
+const ARG_KNOWN_ADDRESSABLE_ENTITY: &str = "known_addressable_entity";
 
 #[no_mangle]
 pub extern "C" fn call() {
@@ -65,8 +67,17 @@ pub extern "C" fn call() {
     if field_idx == FIELD_IDX_PROTOCOL_VERSION {
         let bytes: Bytes = runtime::get_named_arg(ARG_KNOWN_PROTOCOL_VERSION);
         let (expected, _rem) = ProtocolVersion::from_bytes(bytes.inner_bytes())
-            .unwrap_or_revert_with(ApiError::User(CURRENT_UBOUND as u16 + 2));
+            .unwrap_or_revert_with(ApiError::User(CURRENT_UBOUND as u16 + 3));
         let actual = runtime::get_protocol_version();
+        if expected != actual {
+            revert(ApiError::User(field_idx as u16));
+        }
+    }
+    if field_idx == FIELD_IDX_ADDRESSABLE_ENTITY {
+        let bytes: Bytes = runtime::get_named_arg(ARG_KNOWN_ADDRESSABLE_ENTITY);
+        let (expected, _rem) = bool::from_bytes(bytes.inner_bytes())
+            .unwrap_or_revert_with(ApiError::User(CURRENT_UBOUND as u16 + 4));
+        let actual = runtime::get_addressable_entity();
         if expected != actual {
             revert(ApiError::User(field_idx as u16));
         }

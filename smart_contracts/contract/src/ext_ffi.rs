@@ -887,6 +887,7 @@ extern "C" {
     /// * 2 => parent block hash
     /// * 3 => state hash
     /// * 4 => current protocol version
+    /// * 5 => is addressable entity enabled
     /// * `dest_ptr` => pointer in wasm memory where to write the result
     pub fn casper_get_block_info(field_idx: u8, dest_ptr: *const u8);
 

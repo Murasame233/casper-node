@@ -171,6 +171,25 @@ pub fn execute_finalized_block(
         }
     }
 
+    // put enable addressable entity flag to global state
+    match scratch_state.block_global(BlockGlobalRequest::set_addressable_entity(
+        state_root_hash,
+        protocol_version,
+        addressable_entity_enabled,
+    )) {
+        BlockGlobalResult::RootNotFound => {
+            return Err(BlockExecutionError::RootNotFound(state_root_hash));
+        }
+        BlockGlobalResult::Failure(err) => {
+            return Err(BlockExecutionError::BlockGlobal(format!("{:?}", err)));
+        }
+        BlockGlobalResult::Success {
+            post_state_hash, ..
+        } => {
+            state_root_hash = post_state_hash;
+        }
+    }
+
     let transaction_config = &chainspec.transaction_config;
 
     for stored_transaction in executable_block.transactions {
