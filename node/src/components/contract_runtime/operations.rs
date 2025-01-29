@@ -175,7 +175,7 @@ pub fn execute_finalized_block(
     match scratch_state.block_global(BlockGlobalRequest::set_addressable_entity(
         state_root_hash,
         protocol_version,
-        addressable_entity_enabled
+        addressable_entity_enabled,
     )) {
         BlockGlobalResult::RootNotFound => {
             return Err(BlockExecutionError::RootNotFound(state_root_hash));

@@ -156,7 +156,7 @@ fn should_run_get_addressable_entity() {
         },
     )
     .build();
-    
+
     LmdbWasmTestBuilder::default()
         .run_genesis(LOCAL_GENESIS_REQUEST.clone())
         .exec(exec_request)

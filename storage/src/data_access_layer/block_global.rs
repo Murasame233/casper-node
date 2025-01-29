@@ -59,7 +59,7 @@ impl BlockGlobalRequest {
     pub fn set_addressable_entity(
         state_hash: Digest,
         protocol_version: ProtocolVersion,
-        addressable_entity: bool
+        addressable_entity: bool,
     ) -> Self {
         let block_global_kind = BlockGlobalKind::AddressableEntity(addressable_entity);
         BlockGlobalRequest {

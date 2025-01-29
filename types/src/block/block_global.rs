@@ -156,10 +156,10 @@ impl BlockGlobalAddr {
             BlockGlobalAddr::MessageCount => base16::encode_lower(&MESSAGE_COUNT_TAG.to_le_bytes()),
             BlockGlobalAddr::ProtocolVersion => {
                 base16::encode_lower(&PROTOCOL_VERSION_TAG.to_le_bytes())
-            },
+            }
             BlockGlobalAddr::AddressableEntity => {
                 base16::encode_lower(&ADDRESSABLE_ENTITY_TAG.to_le_bytes())
-            },
+            }
         }
     }
 
