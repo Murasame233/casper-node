@@ -319,6 +319,11 @@ impl BlockInfo {
     pub fn block_height(&self) -> u64 {
         self.block_height
     }
+
+    /// Protocol version.
+    pub fn protocol_version(&self) -> ProtocolVersion {
+        self.protocol_version
+    }
 }
 
 /// A request to execute the given Wasm on the V1 runtime.

@@ -383,7 +383,7 @@ where
 
     /// Returns the protocol version.
     pub fn protocol_version(&self) -> ProtocolVersion {
-        self.block_info.protocol_version
+        self.block_info.protocol_version()
     }
 
     /// Returns the current phase.
