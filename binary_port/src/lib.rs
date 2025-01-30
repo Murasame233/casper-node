@@ -17,7 +17,6 @@ mod information_request;
 mod key_prefix;
 mod minimal_block_info;
 mod node_status;
-mod original_request_context;
 mod purse_identifier;
 pub mod record_id;
 mod response_type;
@@ -27,7 +26,7 @@ mod type_wrappers;
 
 pub use balance_response::BalanceResponse;
 pub use binary_message::{BinaryMessage, BinaryMessageCodec};
-pub use binary_request::{BinaryRequest, BinaryRequestHeader, BinaryRequestTag};
+pub use binary_request::{BinaryRequestHeader, BinaryRequestTag, Command};
 pub use binary_response::BinaryResponse;
 pub use binary_response_and_request::BinaryResponseAndRequest;
 pub use binary_response_header::BinaryResponseHeader;

@@ -2,7 +2,7 @@ use core::convert::TryFrom;
 
 use casper_types::{
     bytesrepr::{self, FromBytes, ToBytes},
-    ProtocolVersion, Transaction,
+    Transaction,
 };
 
 use crate::get_request::GetRequest;
@@ -16,7 +16,6 @@ use rand::Rng;
 #[derive(Debug, PartialEq)]
 pub struct BinaryRequestHeader {
     binary_request_version: u16,
-    chain_protocol_version: ProtocolVersion,
     type_tag: u8,
     id: u16,
 }
@@ -24,21 +23,15 @@ pub struct BinaryRequestHeader {
 impl BinaryRequestHeader {
     // Defines the current version of the header, in practice defining the current version of the
     // binary port protocol. Requests with mismatched header version will be dropped.
-    pub const BINARY_REQUEST_VERSION: u16 = 0;
+    pub const BINARY_REQUEST_VERSION: u16 = 1;
 
     /// Creates new binary request header.
-    pub fn new(protocol_version: ProtocolVersion, type_tag: BinaryRequestTag, id: u16) -> Self {
+    pub fn new(type_tag: BinaryRequestTag, id: u16) -> Self {
         Self {
-            chain_protocol_version: protocol_version,
             binary_request_version: Self::BINARY_REQUEST_VERSION,
             type_tag: type_tag.into(),
             id,
         }
-    }
-
-    /// Returns the protocol version of the request.
-    pub fn protocol_version(&self) -> ProtocolVersion {
-        self.chain_protocol_version
     }
 
     /// Returns the type tag of the request.
@@ -61,15 +54,9 @@ impl BinaryRequestHeader {
         self.binary_request_version = version;
     }
 
-    #[cfg(any(feature = "testing", test))]
-    pub fn set_chain_protocol_version(&mut self, protocol_version: ProtocolVersion) {
-        self.chain_protocol_version = protocol_version;
-    }
-
     #[cfg(test)]
     pub(crate) fn random(rng: &mut TestRng) -> Self {
         Self {
-            chain_protocol_version: ProtocolVersion::from_parts(rng.gen(), rng.gen(), rng.gen()),
             binary_request_version: rng.gen(),
             type_tag: BinaryRequestTag::random(rng).into(),
             id: rng.gen(),
@@ -86,14 +73,12 @@ impl ToBytes for BinaryRequestHeader {
 
     fn write_bytes(&self, writer: &mut Vec<u8>) -> Result<(), bytesrepr::Error> {
         self.binary_request_version.write_bytes(writer)?;
-        self.chain_protocol_version.write_bytes(writer)?;
         self.type_tag.write_bytes(writer)?;
         self.id.write_bytes(writer)
     }
 
     fn serialized_length(&self) -> usize {
         self.binary_request_version.serialized_length()
-            + self.chain_protocol_version.serialized_length()
             + self.type_tag.serialized_length()
             + self.id.serialized_length()
     }
@@ -102,12 +87,10 @@ impl ToBytes for BinaryRequestHeader {
 impl FromBytes for BinaryRequestHeader {
     fn from_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), bytesrepr::Error> {
         let (binary_request_version, remainder) = FromBytes::from_bytes(bytes)?;
-        let (chain_protocol_version, remainder) = FromBytes::from_bytes(remainder)?;
         let (type_tag, remainder) = FromBytes::from_bytes(remainder)?;
         let (id, remainder) = FromBytes::from_bytes(remainder)?;
         Ok((
             BinaryRequestHeader {
-                chain_protocol_version,
                 binary_request_version,
                 type_tag,
                 id,
@@ -119,7 +102,8 @@ impl FromBytes for BinaryRequestHeader {
 
 /// A request to the binary access interface.
 #[derive(Debug, PartialEq)]
-pub enum BinaryRequest {
+
+pub enum Command {
     /// Request to get data from the node
     Get(GetRequest),
     /// Request to add a transaction into a blockchain.
@@ -132,19 +116,15 @@ pub enum BinaryRequest {
         /// Transaction to execute.
         transaction: Transaction,
     },
-    /// Minimalistic request to keep the connection alive if the client wants to have a long
-    /// running connection.
-    KeepAliveRequest,
 }
 
-impl BinaryRequest {
+impl Command {
     /// Returns the type tag of the request.
     pub fn tag(&self) -> BinaryRequestTag {
         match self {
-            BinaryRequest::Get(_) => BinaryRequestTag::Get,
-            BinaryRequest::TryAcceptTransaction { .. } => BinaryRequestTag::TryAcceptTransaction,
-            BinaryRequest::TrySpeculativeExec { .. } => BinaryRequestTag::TrySpeculativeExec,
-            BinaryRequest::KeepAliveRequest { .. } => BinaryRequestTag::KeepAliveRequest,
+            Command::Get(_) => BinaryRequestTag::Get,
+            Command::TryAcceptTransaction { .. } => BinaryRequestTag::TryAcceptTransaction,
+            Command::TrySpeculativeExec { .. } => BinaryRequestTag::TrySpeculativeExec,
         }
     }
 
@@ -158,12 +138,11 @@ impl BinaryRequest {
             BinaryRequestTag::TrySpeculativeExec => Self::TrySpeculativeExec {
                 transaction: Transaction::random(rng),
             },
-            BinaryRequestTag::KeepAliveRequest => Self::KeepAliveRequest,
         }
     }
 }
 
-impl ToBytes for BinaryRequest {
+impl ToBytes for Command {
     fn to_bytes(&self) -> Result<Vec<u8>, bytesrepr::Error> {
         let mut buffer = bytesrepr::allocate_buffer(self)?;
         self.write_bytes(&mut buffer)?;
@@ -172,44 +151,38 @@ impl ToBytes for BinaryRequest {
 
     fn write_bytes(&self, writer: &mut Vec<u8>) -> Result<(), bytesrepr::Error> {
         match self {
-            BinaryRequest::Get(inner) => inner.write_bytes(writer),
-            BinaryRequest::TryAcceptTransaction { transaction } => transaction.write_bytes(writer),
-            BinaryRequest::TrySpeculativeExec { transaction } => transaction.write_bytes(writer),
-            BinaryRequest::KeepAliveRequest => Ok(()),
+            Command::Get(inner) => inner.write_bytes(writer),
+            Command::TryAcceptTransaction { transaction } => transaction.write_bytes(writer),
+            Command::TrySpeculativeExec { transaction } => transaction.write_bytes(writer),
         }
     }
 
     fn serialized_length(&self) -> usize {
         match self {
-            BinaryRequest::Get(inner) => inner.serialized_length(),
-            BinaryRequest::TryAcceptTransaction { transaction } => transaction.serialized_length(),
-            BinaryRequest::TrySpeculativeExec { transaction } => transaction.serialized_length(),
-            BinaryRequest::KeepAliveRequest => 0,
+            Command::Get(inner) => inner.serialized_length(),
+            Command::TryAcceptTransaction { transaction } => transaction.serialized_length(),
+            Command::TrySpeculativeExec { transaction } => transaction.serialized_length(),
         }
     }
 }
 
-impl TryFrom<(BinaryRequestTag, &[u8])> for BinaryRequest {
+impl TryFrom<(BinaryRequestTag, &[u8])> for Command {
     type Error = bytesrepr::Error;
 
     fn try_from((tag, bytes): (BinaryRequestTag, &[u8])) -> Result<Self, Self::Error> {
         let (req, remainder) = match tag {
             BinaryRequestTag::Get => {
                 let (get_request, remainder) = FromBytes::from_bytes(bytes)?;
-                (BinaryRequest::Get(get_request), remainder)
+                (Command::Get(get_request), remainder)
             }
             BinaryRequestTag::TryAcceptTransaction => {
                 let (transaction, remainder) = FromBytes::from_bytes(bytes)?;
-                (
-                    BinaryRequest::TryAcceptTransaction { transaction },
-                    remainder,
-                )
+                (Command::TryAcceptTransaction { transaction }, remainder)
             }
             BinaryRequestTag::TrySpeculativeExec => {
                 let (transaction, remainder) = FromBytes::from_bytes(bytes)?;
-                (BinaryRequest::TrySpeculativeExec { transaction }, remainder)
+                (Command::TrySpeculativeExec { transaction }, remainder)
             }
-            BinaryRequestTag::KeepAliveRequest => (BinaryRequest::KeepAliveRequest, bytes),
         };
         if !remainder.is_empty() {
             return Err(bytesrepr::Error::LeftOverBytes);
@@ -228,8 +201,6 @@ pub enum BinaryRequestTag {
     TryAcceptTransaction = 1,
     /// Request to execute a transaction speculatively.
     TrySpeculativeExec = 2,
-    /// A minimalistic request-response to keep the connection alive.
-    KeepAliveRequest = 3,
 }
 
 impl BinaryRequestTag {
@@ -240,7 +211,6 @@ impl BinaryRequestTag {
             0 => BinaryRequestTag::Get,
             1 => BinaryRequestTag::TryAcceptTransaction,
             2 => BinaryRequestTag::TrySpeculativeExec,
-            3 => BinaryRequestTag::KeepAliveRequest,
             _ => unreachable!(),
         }
     }
@@ -254,7 +224,6 @@ impl TryFrom<u8> for BinaryRequestTag {
             0 => Ok(BinaryRequestTag::Get),
             1 => Ok(BinaryRequestTag::TryAcceptTransaction),
             2 => Ok(BinaryRequestTag::TrySpeculativeExec),
-            3 => Ok(BinaryRequestTag::KeepAliveRequest),
             _ => Err(InvalidBinaryRequestTag),
         }
     }
@@ -286,8 +255,8 @@ mod tests {
     fn request_bytesrepr_roundtrip() {
         let rng = &mut TestRng::new();
 
-        let val = BinaryRequest::random(rng);
+        let val = Command::random(rng);
         let bytes = val.to_bytes().expect("should serialize");
-        assert_eq!(BinaryRequest::try_from((val.tag(), &bytes[..])), Ok(val));
+        assert_eq!(Command::try_from((val.tag(), &bytes[..])), Ok(val));
     }
 }
