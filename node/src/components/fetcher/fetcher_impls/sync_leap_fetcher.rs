@@ -49,7 +49,7 @@ impl ItemFetcher<SyncLeap> for Fetcher<SyncLeap> {
                         .put_block_header_to_storage(Box::new(header.clone()))
                         .await;
                 }
-                for signed_header in item.signed_block_headers {
+                for signed_header in item.block_headers_with_signatures {
                     effect_builder
                         .put_signatures_to_storage(signed_header.block_signatures().clone())
                         .await;
