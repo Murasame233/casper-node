@@ -320,11 +320,11 @@ impl FetchItem for SyncLeap {
             .map(|header| (header.block_hash(), header))
             .collect();
         let mut signatures: BTreeMap<EraId, Vec<&BlockSignatures>> = BTreeMap::new();
-        for signed_header in &self.block_headers_with_signatures {
+        for block_header in &self.block_headers_with_signatures {
             signatures
-                .entry(signed_header.block_signatures().era_id())
+                .entry(block_header.block_signatures().era_id())
                 .or_default()
-                .push(signed_header.block_signatures());
+                .push(block_header.block_signatures());
         }
 
         let mut headers_with_sufficient_finality: Vec<BlockHash> =
@@ -374,15 +374,15 @@ impl FetchItem for SyncLeap {
             return Err(SyncLeapValidationError::IncompleteProof);
         }
 
-        for signed_header in &self.block_headers_with_signatures {
-            signed_header
+        for block_header in &self.block_headers_with_signatures {
+            block_header
                 .is_valid()
                 .map_err(SyncLeapValidationError::BlockHeaderWithSignatures)?;
         }
 
         // defer cryptographic verification until last to avoid unnecessary computation
-        for signed_header in &self.block_headers_with_signatures {
-            signed_header
+        for block_header in &self.block_headers_with_signatures {
+            block_header
                 .block_signatures()
                 .is_verified()
                 .map_err(SyncLeapValidationError::Crypto)?;
