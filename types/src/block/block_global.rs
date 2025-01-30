@@ -264,7 +264,7 @@ impl Debug for BlockGlobalAddr {
 #[cfg(any(feature = "testing", test))]
 impl Distribution<BlockGlobalAddr> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> BlockGlobalAddr {
-        match rng.gen_range(BLOCK_TIME_TAG..=PROTOCOL_VERSION_TAG) {
+        match rng.gen_range(BLOCK_TIME_TAG..=ADDRESSABLE_ENTITY_TAG) {
             BLOCK_TIME_TAG => BlockGlobalAddr::BlockTime,
             MESSAGE_COUNT_TAG => BlockGlobalAddr::MessageCount,
             PROTOCOL_VERSION_TAG => BlockGlobalAddr::ProtocolVersion,

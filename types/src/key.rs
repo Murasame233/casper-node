@@ -2742,6 +2742,7 @@ mod tests {
         round_trip(&Key::BlockGlobal(BlockGlobalAddr::BlockTime));
         round_trip(&Key::BlockGlobal(BlockGlobalAddr::MessageCount));
         round_trip(&Key::BlockGlobal(BlockGlobalAddr::ProtocolVersion));
+        round_trip(&Key::BlockGlobal(BlockGlobalAddr::AddressableEntity));
         round_trip(&Key::BalanceHold(BalanceHoldAddr::default()));
         round_trip(&Key::State(EntityAddr::new_system(zeros)));
     }
