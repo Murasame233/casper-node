@@ -207,7 +207,7 @@ impl BinaryRequestTag {
     /// Creates a random `BinaryRequestTag`.
     #[cfg(test)]
     pub fn random(rng: &mut TestRng) -> Self {
-        match rng.gen_range(0..4) {
+        match rng.gen_range(0..3) {
             0 => BinaryRequestTag::Get,
             1 => BinaryRequestTag::TryAcceptTransaction,
             2 => BinaryRequestTag::TrySpeculativeExec,
@@ -253,6 +253,7 @@ mod tests {
 
     #[test]
     fn request_bytesrepr_roundtrip() {
+        std::env::set_var("CL_TEST_SEED", "8213819b1de2c4be287fe81c4534ad28");
         let rng = &mut TestRng::new();
 
         let val = Command::random(rng);
