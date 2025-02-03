@@ -253,7 +253,6 @@ mod tests {
 
     #[test]
     fn request_bytesrepr_roundtrip() {
-        std::env::set_var("CL_TEST_SEED", "8213819b1de2c4be287fe81c4534ad28");
         let rng = &mut TestRng::new();
 
         let val = Command::random(rng);
