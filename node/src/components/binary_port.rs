@@ -12,13 +12,13 @@ use std::{convert::TryFrom, net::SocketAddr, sync::Arc};
 
 use casper_binary_port::{
     AccountInformation, AddressableEntityInformation, BalanceResponse, BinaryMessage,
-    BinaryMessageCodec, BinaryRequestHeader, BinaryRequestTag, BinaryResponse,
-    BinaryResponseAndRequest, Command, ContractInformation, DictionaryItemIdentifier,
-    DictionaryQueryResult, EntityIdentifier, EraIdentifier, ErrorCode, GetRequest,
-    GetTrieFullResult, GlobalStateEntityQualifier, GlobalStateQueryResult, GlobalStateRequest,
-    InformationRequest, InformationRequestTag, KeyPrefix, NodeStatus, PackageIdentifier,
-    PurseIdentifier, ReactorStateName, RecordId, ResponseType, RewardResponse,
-    TransactionWithExecutionInfo, ValueWithProof,
+    BinaryMessageCodec, BinaryRequestHeader, BinaryResponse, BinaryResponseAndRequest, Command,
+    CommandTag, ContractInformation, DictionaryItemIdentifier, DictionaryQueryResult,
+    EntityIdentifier, EraIdentifier, ErrorCode, GetRequest, GetTrieFullResult,
+    GlobalStateEntityQualifier, GlobalStateQueryResult, GlobalStateRequest, InformationRequest,
+    InformationRequestTag, KeyPrefix, NodeStatus, PackageIdentifier, PurseIdentifier,
+    ReactorStateName, RecordId, ResponseType, RewardResponse, TransactionWithExecutionInfo,
+    ValueWithProof,
 };
 use casper_storage::{
     data_access_layer::{
@@ -1493,7 +1493,7 @@ where
     }
 
     // we might receive a request added in a minor version if we're behind
-    let Ok(tag) = BinaryRequestTag::try_from(header.type_tag()) else {
+    let Ok(tag) = CommandTag::try_from(header.type_tag()) else {
         return BinaryResponse::new_error(ErrorCode::UnsupportedRequest);
     };
 
@@ -1501,7 +1501,7 @@ where
         Ok(request) => request,
         Err(error) => {
             debug!(%error, "failed to parse binary request body");
-            return BinaryResponse::new_error(ErrorCode::MalformedBinaryRequest);
+            return BinaryResponse::new_error(ErrorCode::MalformedCommand);
         }
     };
     connection_terminator

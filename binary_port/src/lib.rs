@@ -26,7 +26,7 @@ mod type_wrappers;
 
 pub use balance_response::BalanceResponse;
 pub use binary_message::{BinaryMessage, BinaryMessageCodec};
-pub use binary_request::{BinaryRequestHeader, BinaryRequestTag, Command};
+pub use binary_request::{BinaryRequestHeader, Command, CommandTag};
 pub use binary_response::BinaryResponse;
 pub use binary_response_and_request::BinaryResponseAndRequest;
 pub use binary_response_header::BinaryResponseHeader;

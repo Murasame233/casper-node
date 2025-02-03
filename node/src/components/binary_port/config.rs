@@ -15,22 +15,22 @@ const DEFAULT_QPS_LIMIT: usize = 110;
 // Initial time given to a connection before it expires
 const DEFAULT_INITIAL_CONNECTION_LIFETIME: &str = "10 seconds";
 // Default amount of time which is given to a connection to extend it's lifetime when a valid
-// [`BinaryRequest::Get(GetRequest::Record)`] is sent to the node
+// [`Command::Get(GetRequest::Record)`] is sent to the node
 const DEFAULT_GET_RECORD_REQUEST_TERMINATION_DELAY: &str = "0 seconds";
 // Default amount of time which is given to a connection to extend it's lifetime when a valid
-// [`BinaryRequest::Get(GetRequest::Information)`] is sent to the node
+// [`Command::Get(GetRequest::Information)`] is sent to the node
 const DEFAULT_GET_INFORMATION_REQUEST_TERMINATION_DELAY: &str = "5 seconds";
 // Default amount of time which is given to a connection to extend it's lifetime when a valid
-// [`BinaryRequest::Get(GetRequest::State)`] is sent to the node
+// [`Command::Get(GetRequest::State)`] is sent to the node
 const DEFAULT_GET_STATE_REQUEST_TERMINATION_DELAY: &str = "0 seconds";
 // Default amount of time which is given to a connection to extend it's lifetime when a valid
-// [`BinaryRequest::Get(GetRequest::Trie)`] is sent to the node
+// [`Command::Get(GetRequest::Trie)`] is sent to the node
 const DEFAULT_GET_TRIE_REQUEST_TERMINATION_DELAY: &str = "0 seconds";
 // Default amount of time which is given to a connection to extend it's lifetime when a valid
-// [`BinaryRequest::TryAcceptTransaction`] is sent to the node
+// [`Command::TryAcceptTransaction`] is sent to the node
 const DEFAULT_ACCEPT_TRANSACTION_REQUEST_TERMINATION_DELAY: &str = "24 seconds";
 // Default amount of time which is given to a connection to extend it's lifetime when a valid
-// [`BinaryRequest::TrySpeculativeExec`] is sent to the node
+// [`Command::TrySpeculativeExec`] is sent to the node
 const DEFAULT_SPECULATIVE_EXEC_REQUEST_TERMINATION_DELAY: &str = "0 seconds";
 
 /// Binary port server configuration.
@@ -59,22 +59,22 @@ pub struct Config {
     // Initial time given to a connection before it expires
     pub initial_connection_lifetime: TimeDiff,
     // The amount of time which is given to a connection to extend it's lifetime when a valid
-    // [`BinaryRequest::Get(GetRequest::Record)`] is sent to the node
+    // [`Command::Get(GetRequest::Record)`] is sent to the node
     pub get_record_request_termination_delay: TimeDiff,
     // The amount of time which is given to a connection to extend it's lifetime when a valid
-    // [`BinaryRequest::Get(GetRequest::Information)`] is sent to the node
+    // [`Command::Get(GetRequest::Information)`] is sent to the node
     pub get_information_request_termination_delay: TimeDiff,
     // The amount of time which is given to a connection to extend it's lifetime when a valid
-    // [`BinaryRequest::Get(GetRequest::State)`] is sent to the node
+    // [`Command::Get(GetRequest::State)`] is sent to the node
     pub get_state_request_termination_delay: TimeDiff,
     // The amount of time which is given to a connection to extend it's lifetime when a valid
-    // [`BinaryRequest::Get(GetRequest::Trie)`] is sent to the node
+    // [`Command::Get(GetRequest::Trie)`] is sent to the node
     pub get_trie_request_termination_delay: TimeDiff,
     // The amount of time which is given to a connection to extend it's lifetime when a valid
-    // [`BinaryRequest::TryAcceptTransaction`] is sent to the node
+    // [`Command::TryAcceptTransaction`] is sent to the node
     pub accept_transaction_request_termination_delay: TimeDiff,
     // The amount of time which is given to a connection to extend it's lifetime when a valid
-    // [`BinaryRequest::TrySpeculativeExec`] is sent to the node
+    // [`Command::TrySpeculativeExec`] is sent to the node
     pub speculative_exec_request_termination_delay: TimeDiff,
 }
 

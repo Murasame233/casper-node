@@ -304,9 +304,9 @@ pub enum ErrorCode {
     /// Malformed header
     #[error("malformed header of binary request")]
     MalformedBinaryRequestHeader = 95,
-    /// Malformed binary request
-    #[error("malformed binary request")]
-    MalformedBinaryRequest = 96,
+    /// Malformed command
+    #[error("malformed command")]
+    MalformedCommand = 96,
     /// No matching lane for transaction
     #[error("couldn't associate a transaction lane with the transaction")]
     InvalidTransactionNoWasmLaneMatches = 97,
@@ -440,7 +440,7 @@ impl TryFrom<u16> for ErrorCode {
             93 => Ok(ErrorCode::MalformedBinaryVersion),
             94 => Ok(ErrorCode::MalformedProtocolVersion),
             95 => Ok(ErrorCode::MalformedBinaryRequestHeader),
-            96 => Ok(ErrorCode::MalformedBinaryRequest),
+            96 => Ok(ErrorCode::MalformedCommand),
             97 => Ok(ErrorCode::InvalidTransactionNoWasmLaneMatches),
             98 => Ok(ErrorCode::InvalidTransactionEntryPointMustBeCall),
             99 => Ok(ErrorCode::InvalidTransactionCannotDeserializeField),

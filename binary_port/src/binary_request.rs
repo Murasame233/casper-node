@@ -26,7 +26,7 @@ impl BinaryRequestHeader {
     pub const BINARY_REQUEST_VERSION: u16 = 1;
 
     /// Creates new binary request header.
-    pub fn new(type_tag: BinaryRequestTag, id: u16) -> Self {
+    pub fn new(type_tag: CommandTag, id: u16) -> Self {
         Self {
             binary_request_version: Self::BINARY_REQUEST_VERSION,
             type_tag: type_tag.into(),
@@ -58,7 +58,7 @@ impl BinaryRequestHeader {
     pub(crate) fn random(rng: &mut TestRng) -> Self {
         Self {
             binary_request_version: rng.gen(),
-            type_tag: BinaryRequestTag::random(rng).into(),
+            type_tag: CommandTag::random(rng).into(),
             id: rng.gen(),
         }
     }
@@ -120,22 +120,22 @@ pub enum Command {
 
 impl Command {
     /// Returns the type tag of the request.
-    pub fn tag(&self) -> BinaryRequestTag {
+    pub fn tag(&self) -> CommandTag {
         match self {
-            Command::Get(_) => BinaryRequestTag::Get,
-            Command::TryAcceptTransaction { .. } => BinaryRequestTag::TryAcceptTransaction,
-            Command::TrySpeculativeExec { .. } => BinaryRequestTag::TrySpeculativeExec,
+            Command::Get(_) => CommandTag::Get,
+            Command::TryAcceptTransaction { .. } => CommandTag::TryAcceptTransaction,
+            Command::TrySpeculativeExec { .. } => CommandTag::TrySpeculativeExec,
         }
     }
 
     #[cfg(test)]
     pub(crate) fn random(rng: &mut TestRng) -> Self {
-        match BinaryRequestTag::random(rng) {
-            BinaryRequestTag::Get => Self::Get(GetRequest::random(rng)),
-            BinaryRequestTag::TryAcceptTransaction => Self::TryAcceptTransaction {
+        match CommandTag::random(rng) {
+            CommandTag::Get => Self::Get(GetRequest::random(rng)),
+            CommandTag::TryAcceptTransaction => Self::TryAcceptTransaction {
                 transaction: Transaction::random(rng),
             },
-            BinaryRequestTag::TrySpeculativeExec => Self::TrySpeculativeExec {
+            CommandTag::TrySpeculativeExec => Self::TrySpeculativeExec {
                 transaction: Transaction::random(rng),
             },
         }
@@ -166,20 +166,20 @@ impl ToBytes for Command {
     }
 }
 
-impl TryFrom<(BinaryRequestTag, &[u8])> for Command {
+impl TryFrom<(CommandTag, &[u8])> for Command {
     type Error = bytesrepr::Error;
 
-    fn try_from((tag, bytes): (BinaryRequestTag, &[u8])) -> Result<Self, Self::Error> {
+    fn try_from((tag, bytes): (CommandTag, &[u8])) -> Result<Self, Self::Error> {
         let (req, remainder) = match tag {
-            BinaryRequestTag::Get => {
+            CommandTag::Get => {
                 let (get_request, remainder) = FromBytes::from_bytes(bytes)?;
                 (Command::Get(get_request), remainder)
             }
-            BinaryRequestTag::TryAcceptTransaction => {
+            CommandTag::TryAcceptTransaction => {
                 let (transaction, remainder) = FromBytes::from_bytes(bytes)?;
                 (Command::TryAcceptTransaction { transaction }, remainder)
             }
-            BinaryRequestTag::TrySpeculativeExec => {
+            CommandTag::TrySpeculativeExec => {
                 let (transaction, remainder) = FromBytes::from_bytes(bytes)?;
                 (Command::TrySpeculativeExec { transaction }, remainder)
             }
@@ -194,7 +194,7 @@ impl TryFrom<(BinaryRequestTag, &[u8])> for Command {
 /// The type tag of a binary request.
 #[derive(Debug, PartialEq)]
 #[repr(u8)]
-pub enum BinaryRequestTag {
+pub enum CommandTag {
     /// Request to get data from the node
     Get = 0,
     /// Request to add a transaction into a blockchain.
@@ -203,40 +203,40 @@ pub enum BinaryRequestTag {
     TrySpeculativeExec = 2,
 }
 
-impl BinaryRequestTag {
-    /// Creates a random `BinaryRequestTag`.
+impl CommandTag {
+    /// Creates a random `CommandTag`.
     #[cfg(test)]
     pub fn random(rng: &mut TestRng) -> Self {
         match rng.gen_range(0..3) {
-            0 => BinaryRequestTag::Get,
-            1 => BinaryRequestTag::TryAcceptTransaction,
-            2 => BinaryRequestTag::TrySpeculativeExec,
+            0 => CommandTag::Get,
+            1 => CommandTag::TryAcceptTransaction,
+            2 => CommandTag::TrySpeculativeExec,
             _ => unreachable!(),
         }
     }
 }
 
-impl TryFrom<u8> for BinaryRequestTag {
-    type Error = InvalidBinaryRequestTag;
+impl TryFrom<u8> for CommandTag {
+    type Error = InvalidCommandTag;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
-            0 => Ok(BinaryRequestTag::Get),
-            1 => Ok(BinaryRequestTag::TryAcceptTransaction),
-            2 => Ok(BinaryRequestTag::TrySpeculativeExec),
-            _ => Err(InvalidBinaryRequestTag),
+            0 => Ok(CommandTag::Get),
+            1 => Ok(CommandTag::TryAcceptTransaction),
+            2 => Ok(CommandTag::TrySpeculativeExec),
+            _ => Err(InvalidCommandTag),
         }
     }
 }
 
-impl From<BinaryRequestTag> for u8 {
-    fn from(value: BinaryRequestTag) -> Self {
+impl From<CommandTag> for u8 {
+    fn from(value: CommandTag) -> Self {
         value as u8
     }
 }
 
-/// Error raised when trying to convert an invalid u8 into a `BinaryRequestTag`.
-pub struct InvalidBinaryRequestTag;
+/// Error raised when trying to convert an invalid u8 into a `CommandTag`.
+pub struct InvalidCommandTag;
 
 #[cfg(test)]
 mod tests {
