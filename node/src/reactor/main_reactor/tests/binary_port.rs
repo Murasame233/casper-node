@@ -1400,7 +1400,7 @@ async fn binary_port_component_rejects_requests_with_invalid_header_version() {
 
     assert_eq!(
         binary_response_and_request.response().error_code(),
-        ErrorCode::BinaryProtocolVersionMismatch as u16
+        ErrorCode::BinaryRequestHeaderVersionMismatch as u16
     );
 
     let (_net, _rng) = timeout(Duration::from_secs(10), finish_cranking)

@@ -1452,16 +1452,16 @@ fn extract_header(payload: &[u8]) -> Result<(BinaryRequestHeader, &[u8]), ErrorC
     const BINARY_VERSION_LENGTH_BYTES: usize = std::mem::size_of::<u16>();
 
     if payload.len() < BINARY_VERSION_LENGTH_BYTES {
-        return Err(ErrorCode::MalformedBinaryVersion);
+        return Err(ErrorCode::TooLittleBytesForRequestHeaderVersion);
     }
 
     let binary_protocol_version = match u16::from_bytes(payload) {
         Ok((binary_protocol_version, _)) => binary_protocol_version,
-        Err(_) => return Err(ErrorCode::MalformedProtocolVersion),
+        Err(_) => return Err(ErrorCode::MalformedBinaryRequestHeaderVersion),
     };
 
     if binary_protocol_version != BinaryRequestHeader::BINARY_REQUEST_VERSION {
-        return Err(ErrorCode::BinaryProtocolVersionMismatch);
+        return Err(ErrorCode::BinaryRequestHeaderVersionMismatch);
     }
 
     match BinaryRequestHeader::from_bytes(payload) {
