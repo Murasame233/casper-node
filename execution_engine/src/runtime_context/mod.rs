@@ -76,7 +76,6 @@ pub struct RuntimeContext<'a, R> {
     gas_limit: Gas,
     gas_counter: Gas,
     address_generator: Rc<RefCell<AddressGenerator>>,
-    protocol_version: ProtocolVersion,
     phase: Phase,
     engine_config: EngineConfig,
     entry_point_type: EntryPointType,
@@ -112,7 +111,6 @@ where
         tracking_copy: Rc<RefCell<TrackingCopy<R>>>,
         engine_config: EngineConfig,
         block_info: BlockInfo,
-        protocol_version: ProtocolVersion,
         transaction_hash: TransactionHash,
         phase: Phase,
         args: RuntimeArgs,
@@ -143,7 +141,6 @@ where
             gas_limit,
             gas_counter,
             address_generator,
-            protocol_version,
             phase,
             engine_config,
             transfers,
@@ -173,7 +170,6 @@ where
         let engine_config = self.engine_config.clone();
 
         let block_info = self.block_info;
-        let protocol_version = self.protocol_version;
         let transaction_hash = self.transaction_hash;
         let phase = self.phase;
 
@@ -199,7 +195,6 @@ where
             gas_limit,
             gas_counter,
             address_generator,
-            protocol_version,
             phase,
             engine_config,
             transfers,
@@ -388,7 +383,7 @@ where
 
     /// Returns the protocol version.
     pub fn protocol_version(&self) -> ProtocolVersion {
-        self.protocol_version
+        self.block_info.protocol_version()
     }
 
     /// Returns the current phase.

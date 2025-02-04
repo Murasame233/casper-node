@@ -153,6 +153,43 @@ pub fn execute_finalized_block(
         }
     }
 
+    // put protocol version to global state
+    match scratch_state.block_global(BlockGlobalRequest::set_protocol_version(
+        state_root_hash,
+        protocol_version,
+    )) {
+        BlockGlobalResult::RootNotFound => {
+            return Err(BlockExecutionError::RootNotFound(state_root_hash));
+        }
+        BlockGlobalResult::Failure(err) => {
+            return Err(BlockExecutionError::BlockGlobal(format!("{:?}", err)));
+        }
+        BlockGlobalResult::Success {
+            post_state_hash, ..
+        } => {
+            state_root_hash = post_state_hash;
+        }
+    }
+
+    // put enable addressable entity flag to global state
+    match scratch_state.block_global(BlockGlobalRequest::set_addressable_entity(
+        state_root_hash,
+        protocol_version,
+        addressable_entity_enabled,
+    )) {
+        BlockGlobalResult::RootNotFound => {
+            return Err(BlockExecutionError::RootNotFound(state_root_hash));
+        }
+        BlockGlobalResult::Failure(err) => {
+            return Err(BlockExecutionError::BlockGlobal(format!("{:?}", err)));
+        }
+        BlockGlobalResult::Success {
+            post_state_hash, ..
+        } => {
+            state_root_hash = post_state_hash;
+        }
+    }
+
     let transaction_config = &chainspec.transaction_config;
 
     for stored_transaction in executable_block.transactions {
@@ -312,7 +349,13 @@ pub fn execute_finalized_block(
                 let payment_input_data = transaction.to_payment_input_data();
 
                 let pay_result = match WasmV1Request::new_custom_payment(
-                    BlockInfo::new(state_root_hash, block_time, parent_block_hash, block_height),
+                    BlockInfo::new(
+                        state_root_hash,
+                        block_time,
+                        parent_block_hash,
+                        block_height,
+                        protocol_version,
+                    ),
                     custom_payment_gas_limit,
                     &payment_input_data,
                 ) {
@@ -508,6 +551,7 @@ pub fn execute_finalized_block(
                             block_time,
                             parent_block_hash,
                             block_height,
+                            protocol_version,
                         ),
                         gas_limit,
                         &session_input_data,
@@ -1218,6 +1262,7 @@ where
                 block_time.into(),
                 parent_block_hash,
                 block_height,
+                execution_engine_v1.config().protocol_version(),
             );
             let session_input_data = transaction.to_session_input_data();
             let wasm_v1_result =
