@@ -332,27 +332,27 @@ qps_limit = 110
 initial_connection_lifetime = '10 seconds'
 
 #The amount of time which is given to a connection to extend it's lifetime when a valid
-# [`BinaryRequest::Get(GetRequest::Record)`] is sent to the node
+# [`Command::Get(GetRequest::Record)`] is sent to the node
 get_record_request_termination_delay = '0 seconds'
 
 #The amount of time which is given to a connection to extend it's lifetime when a valid
-#[`BinaryRequest::Get(GetRequest::Information)`] is sent to the node
+#[`Command::Get(GetRequest::Information)`] is sent to the node
 get_information_request_termination_delay = '5 seconds'
 
 #The amount of time which is given to a connection to extend it's lifetime when a valid
-#[`BinaryRequest::Get(GetRequest::State)`] is sent to the node
+#[`Command::Get(GetRequest::State)`] is sent to the node
 get_state_request_termination_delay = '0 seconds'
 
 #The amount of time which is given to a connection to extend it's lifetime when a valid
-#[`BinaryRequest::Get(GetRequest::Trie)`] is sent to the node
+#[`Command::Get(GetRequest::Trie)`] is sent to the node
 get_trie_request_termination_delay = '0 seconds'
 
 #The amount of time which is given to a connection to extend it's lifetime when a valid
-#[`BinaryRequest::TryAcceptTransaction`] is sent to the node
+#[`Command::TryAcceptTransaction`] is sent to the node
 accept_transaction_request_termination_delay = '24 seconds'
 
 #The amount of time which is given to a connection to extend it's lifetime when a valid
-#[`BinaryRequest::TrySpeculativeExec`] is sent to the node
+#[`Command::TrySpeculativeExec`] is sent to the node
 speculative_exec_request_termination_delay = '0 seconds'
 
 # ==============================================

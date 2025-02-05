@@ -14,21 +14,21 @@ use rand::Rng;
 
 /// The header of a binary request.
 #[derive(Debug, PartialEq)]
-pub struct BinaryRequestHeader {
-    binary_request_version: u16,
+pub struct CommandHeader {
+    header_version: u16,
     type_tag: u8,
     id: u16,
 }
 
-impl BinaryRequestHeader {
+impl CommandHeader {
     // Defines the current version of the header, in practice defining the current version of the
     // binary port protocol. Requests with mismatched header version will be dropped.
-    pub const BINARY_REQUEST_VERSION: u16 = 1;
+    pub const HEADER_VERSION: u16 = 1;
 
     /// Creates new binary request header.
     pub fn new(type_tag: CommandTag, id: u16) -> Self {
         Self {
-            binary_request_version: Self::BINARY_REQUEST_VERSION,
+            header_version: Self::HEADER_VERSION,
             type_tag: type_tag.into(),
             id,
         }
@@ -46,25 +46,25 @@ impl BinaryRequestHeader {
 
     /// Returns the header version.
     pub fn version(&self) -> u16 {
-        self.binary_request_version
+        self.header_version
     }
 
     #[cfg(any(feature = "testing", test))]
     pub fn set_binary_request_version(&mut self, version: u16) {
-        self.binary_request_version = version;
+        self.header_version = version;
     }
 
     #[cfg(test)]
     pub(crate) fn random(rng: &mut TestRng) -> Self {
         Self {
-            binary_request_version: rng.gen(),
+            header_version: rng.gen(),
             type_tag: CommandTag::random(rng).into(),
             id: rng.gen(),
         }
     }
 }
 
-impl ToBytes for BinaryRequestHeader {
+impl ToBytes for CommandHeader {
     fn to_bytes(&self) -> Result<Vec<u8>, bytesrepr::Error> {
         let mut buffer = bytesrepr::allocate_buffer(self)?;
         self.write_bytes(&mut buffer)?;
@@ -72,26 +72,26 @@ impl ToBytes for BinaryRequestHeader {
     }
 
     fn write_bytes(&self, writer: &mut Vec<u8>) -> Result<(), bytesrepr::Error> {
-        self.binary_request_version.write_bytes(writer)?;
+        self.header_version.write_bytes(writer)?;
         self.type_tag.write_bytes(writer)?;
         self.id.write_bytes(writer)
     }
 
     fn serialized_length(&self) -> usize {
-        self.binary_request_version.serialized_length()
+        self.header_version.serialized_length()
             + self.type_tag.serialized_length()
             + self.id.serialized_length()
     }
 }
 
-impl FromBytes for BinaryRequestHeader {
+impl FromBytes for CommandHeader {
     fn from_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), bytesrepr::Error> {
         let (binary_request_version, remainder) = FromBytes::from_bytes(bytes)?;
         let (type_tag, remainder) = FromBytes::from_bytes(remainder)?;
         let (id, remainder) = FromBytes::from_bytes(remainder)?;
         Ok((
-            BinaryRequestHeader {
-                binary_request_version,
+            CommandHeader {
+                header_version: binary_request_version,
                 type_tag,
                 id,
             },
@@ -247,7 +247,7 @@ mod tests {
     fn header_bytesrepr_roundtrip() {
         let rng = &mut TestRng::new();
 
-        let val = BinaryRequestHeader::random(rng);
+        let val = CommandHeader::random(rng);
         bytesrepr::test_serialization_roundtrip(&val);
     }
 

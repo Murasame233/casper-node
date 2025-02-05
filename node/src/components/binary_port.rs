@@ -12,7 +12,7 @@ use std::{convert::TryFrom, net::SocketAddr, sync::Arc};
 
 use casper_binary_port::{
     AccountInformation, AddressableEntityInformation, BalanceResponse, BinaryMessage,
-    BinaryMessageCodec, BinaryRequestHeader, BinaryResponse, BinaryResponseAndRequest, Command,
+    BinaryMessageCodec, BinaryResponse, BinaryResponseAndRequest, Command, CommandHeader,
     CommandTag, ContractInformation, DictionaryItemIdentifier, DictionaryQueryResult,
     EntityIdentifier, EraIdentifier, ErrorCode, GetRequest, GetTrieFullResult,
     GlobalStateEntityQualifier, GlobalStateQueryResult, GlobalStateRequest, InformationRequest,
@@ -1448,7 +1448,7 @@ where
     }
 }
 
-fn extract_header(payload: &[u8]) -> Result<(BinaryRequestHeader, &[u8]), ErrorCode> {
+fn extract_header(payload: &[u8]) -> Result<(CommandHeader, &[u8]), ErrorCode> {
     const BINARY_VERSION_LENGTH_BYTES: usize = std::mem::size_of::<u16>();
 
     if payload.len() < BINARY_VERSION_LENGTH_BYTES {
@@ -1457,18 +1457,18 @@ fn extract_header(payload: &[u8]) -> Result<(BinaryRequestHeader, &[u8]), ErrorC
 
     let binary_protocol_version = match u16::from_bytes(payload) {
         Ok((binary_protocol_version, _)) => binary_protocol_version,
-        Err(_) => return Err(ErrorCode::MalformedBinaryRequestHeaderVersion),
+        Err(_) => return Err(ErrorCode::MalformedCommandHeaderVersion),
     };
 
-    if binary_protocol_version != BinaryRequestHeader::BINARY_REQUEST_VERSION {
-        return Err(ErrorCode::BinaryRequestHeaderVersionMismatch);
+    if binary_protocol_version != CommandHeader::HEADER_VERSION {
+        return Err(ErrorCode::CommandHeaderVersionMismatch);
     }
 
-    match BinaryRequestHeader::from_bytes(payload) {
+    match CommandHeader::from_bytes(payload) {
         Ok((header, remainder)) => Ok((header, remainder)),
         Err(error) => {
             debug!(%error, "failed to parse binary request header");
-            Err(ErrorCode::MalformedBinaryRequestHeader)
+            Err(ErrorCode::MalformedCommandHeader)
         }
     }
 }

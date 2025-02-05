@@ -2,10 +2,10 @@
 
 mod balance_response;
 mod binary_message;
-mod binary_request;
 mod binary_response;
 mod binary_response_and_request;
 mod binary_response_header;
+mod command;
 mod dictionary_item_identifier;
 mod entity_qualifier;
 mod era_identifier;
@@ -26,10 +26,10 @@ mod type_wrappers;
 
 pub use balance_response::BalanceResponse;
 pub use binary_message::{BinaryMessage, BinaryMessageCodec};
-pub use binary_request::{BinaryRequestHeader, Command, CommandTag};
 pub use binary_response::BinaryResponse;
 pub use binary_response_and_request::BinaryResponseAndRequest;
 pub use binary_response_header::BinaryResponseHeader;
+pub use command::{Command, CommandHeader, CommandTag};
 pub use dictionary_item_identifier::DictionaryItemIdentifier;
 pub use entity_qualifier::GlobalStateEntityQualifier;
 pub use era_identifier::EraIdentifier;

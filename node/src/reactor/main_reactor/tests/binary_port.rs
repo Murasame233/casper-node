@@ -8,7 +8,7 @@ use std::{
 
 use casper_binary_port::{
     AccountInformation, AddressableEntityInformation, BalanceResponse, BinaryMessage,
-    BinaryMessageCodec, BinaryRequestHeader, BinaryResponse, BinaryResponseAndRequest, Command,
+    BinaryMessageCodec, BinaryResponse, BinaryResponseAndRequest, Command, CommandHeader,
     ConsensusStatus, ConsensusValidatorChanges, ContractInformation, DictionaryItemIdentifier,
     DictionaryQueryResult, EntityIdentifier, EraIdentifier, ErrorCode, GetRequest,
     GetTrieFullResult, GlobalStateEntityQualifier, GlobalStateQueryResult, GlobalStateRequest,
@@ -502,7 +502,7 @@ async fn binary_port_component_handles_all_requests() {
         },
     ) in test_cases.iter().enumerate()
     {
-        let header = BinaryRequestHeader::new(request.tag(), index as u16);
+        let header = CommandHeader::new(request.tag(), index as u16);
         let header_bytes = ToBytes::to_bytes(&header).expect("should serialize");
 
         let original_request_bytes = header_bytes
@@ -1371,7 +1371,7 @@ async fn binary_port_component_rejects_requests_with_invalid_header_version() {
         key: vec![],
     });
 
-    let mut header = BinaryRequestHeader::new(request.tag(), 0);
+    let mut header = CommandHeader::new(request.tag(), 0);
 
     // Make the binary protocol version incompatible.
     header.set_binary_request_version(header.version() + 1);
@@ -1400,7 +1400,7 @@ async fn binary_port_component_rejects_requests_with_invalid_header_version() {
 
     assert_eq!(
         binary_response_and_request.response().error_code(),
-        ErrorCode::BinaryRequestHeaderVersionMismatch as u16
+        ErrorCode::CommandHeaderVersionMismatch as u16
     );
 
     let (_net, _rng) = timeout(Duration::from_secs(10), finish_cranking)

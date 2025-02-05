@@ -12,7 +12,7 @@ use std::{
 };
 
 use casper_binary_port::{
-    BinaryMessage, BinaryMessageCodec, BinaryRequestHeader, BinaryResponseAndRequest, Command,
+    BinaryMessage, BinaryMessageCodec, CommandHeader, BinaryResponseAndRequest, Command,
     InformationRequest, Uptime,
 };
 use either::Either;
@@ -1447,7 +1447,7 @@ async fn should_start_in_isolation() {
                 .try_into()
                 .expect("should convert"),
         );
-        let header = BinaryRequestHeader::new(request.tag(), 1_u16);
+        let header = CommandHeader::new(request.tag(), 1_u16);
         let header_bytes = ToBytes::to_bytes(&header).expect("should serialize");
         header_bytes
             .iter()
@@ -1498,7 +1498,7 @@ async fn should_be_peerless_in_isolation() {
                 .try_into()
                 .expect("should convert"),
         );
-        let header = BinaryRequestHeader::new(request.tag(), 1_u16);
+        let header = CommandHeader::new(request.tag(), 1_u16);
         let header_bytes = ToBytes::to_bytes(&header).expect("should serialize");
         header_bytes
             .iter()

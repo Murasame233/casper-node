@@ -198,7 +198,7 @@ pub enum ErrorCode {
     UnsupportedRewardsV1Request = 59,
     /// Invalid binary request header versions.
     #[error("binary request header versions mismatch")]
-    BinaryRequestHeaderVersionMismatch = 60,
+    CommandHeaderVersionMismatch = 60,
     /// Blockchain is empty
     #[error("blockchain is empty")]
     EmptyBlockchain = 61,
@@ -295,12 +295,12 @@ pub enum ErrorCode {
     /// Malformed binary version
     #[error("not enough bytes to read version of the binary request header")]
     TooLittleBytesForRequestHeaderVersion = 92,
-    /// Malformed binary request header version
-    #[error("malformed binary request header version")]
-    MalformedBinaryRequestHeaderVersion = 93,
+    /// Malformed command header version
+    #[error("malformed commnd header version")]
+    MalformedCommandHeaderVersion = 93,
     /// Malformed header
-    #[error("malformed header of binary request")]
-    MalformedBinaryRequestHeader = 94,
+    #[error("malformed command header")]
+    MalformedCommandHeader = 94,
     /// Malformed command
     #[error("malformed command")]
     MalformedCommand = 95,
@@ -401,7 +401,7 @@ impl TryFrom<u16> for ErrorCode {
             57 => Ok(ErrorCode::SwitchBlockNotFound),
             58 => Ok(ErrorCode::SwitchBlockParentNotFound),
             59 => Ok(ErrorCode::UnsupportedRewardsV1Request),
-            60 => Ok(ErrorCode::BinaryRequestHeaderVersionMismatch),
+            60 => Ok(ErrorCode::CommandHeaderVersionMismatch),
             61 => Ok(ErrorCode::EmptyBlockchain),
             62 => Ok(ErrorCode::ExpectedDeploy),
             63 => Ok(ErrorCode::ExpectedTransaction),
@@ -434,8 +434,8 @@ impl TryFrom<u16> for ErrorCode {
             90 => Ok(ErrorCode::TransferRecordMalformedKey),
             91 => Ok(ErrorCode::MalformedInformationRequest),
             92 => Ok(ErrorCode::TooLittleBytesForRequestHeaderVersion),
-            93 => Ok(ErrorCode::MalformedBinaryRequestHeaderVersion),
-            94 => Ok(ErrorCode::MalformedBinaryRequestHeader),
+            93 => Ok(ErrorCode::MalformedCommandHeaderVersion),
+            94 => Ok(ErrorCode::MalformedCommandHeader),
             95 => Ok(ErrorCode::MalformedCommand),
             96 => Ok(ErrorCode::InvalidTransactionNoWasmLaneMatches),
             97 => Ok(ErrorCode::InvalidTransactionEntryPointMustBeCall),
