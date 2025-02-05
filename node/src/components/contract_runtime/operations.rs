@@ -236,7 +236,7 @@ pub fn execute_finalized_block(
         transaction  for native transactions there is no wasm and the consumed always
         equals the limit  for bytecode / wasm based transactions the consumed is based on
         what opcodes were executed and can range from >=0 to <=gas_limit.
-        consumed is determined after execution and is used for refund & fee post processing.
+        consumed is determined after execution and is used for refund & fee post-processing.
 
         we check these top level concerns early so that we can skip if there is an error
         */
@@ -406,7 +406,7 @@ pub fn execute_finalized_block(
                         authorization_keys.clone(),
                         BalanceIdentifierTransferArgs::new(
                             None,
-                            BalanceIdentifier::Account(initiator_addr.account_hash()),
+                            initiator_addr.clone().into(),
                             BalanceIdentifier::Payment,
                             penalty_payment_amount,
                             None,
@@ -419,7 +419,11 @@ pub fn execute_finalized_block(
                             if insufficient_payment_deposited {
                                 "Insufficient custom payment".to_string()
                             } else {
-                                "Unknown custom payment issue".to_string()
+                                // this should be unreachable due to guard condition above
+                                let unk = "Unknown custom payment issue";
+                                warn!(%transaction_hash, unk);
+                                debug_assert!(false, "{}", unk);
+                                unk.to_string()
                             }
                         }
                     };
@@ -459,19 +463,19 @@ pub fn execute_finalized_block(
 
         let allow_execution = {
             let is_not_penalized = !balance_identifier.is_penalty();
-            // in the case of custom payment, we do all payment processing up front
-            // after checking if the initiator can cover the penalty payment,
-            // and then either charge the full amount in the happy path
-            // or the penalty amount in the sad path...in whichever case
-            // the sad path is handled by is_penalty and the balance is 'sufficient'
-            let sufficient_balance =
+            // in the case of custom payment, we do all payment processing up front after checking
+            // if the initiator can cover the penalty payment, and then either charge the full
+            // amount in the happy path or the penalty amount in the sad path...in whichever case
+            // the sad path is handled by is_penalty and the balance in the payment purse is
+            // the penalty payment or the full amount but is 'sufficient' either way
+            let is_sufficient_balance =
                 is_custom_payment || post_payment_balance_result.is_sufficient(cost);
             let is_supported = chainspec.is_supported(lane_id);
-            let allow = is_not_penalized && sufficient_balance && is_supported;
+            let allow = is_not_penalized && is_sufficient_balance && is_supported;
             if !allow {
-                info!(%transaction_hash, ?balance_identifier, ?sufficient_balance, ?is_not_penalized, ?is_supported, "payment preprocessing unsuccessful");
+                info!(%transaction_hash, ?balance_identifier, ?is_sufficient_balance, ?is_not_penalized, ?is_supported, "payment preprocessing unsuccessful");
             } else {
-                debug!(%transaction_hash, ?balance_identifier, ?sufficient_balance, ?is_not_penalized, ?is_supported, "payment preprocessing successful");
+                debug!(%transaction_hash, ?balance_identifier, ?is_sufficient_balance, ?is_not_penalized, ?is_supported, "payment preprocessing successful");
             }
             allow
         };
@@ -628,7 +632,11 @@ pub fn execute_finalized_block(
                         artifact_builder.with_invalid_wasm_v2_request(ire);
                     }
                 },
-                _ => unreachable!("either v1 or v2 wasm"),
+                _ => {
+                    // it is currently not possible to specify a vm other than v1 or v2 on the
+                    // transaction itself, so this should be unreachable
+                    unreachable!("Unknown VM target")
+                }
             }
         }
 
@@ -680,6 +688,18 @@ pub fn execute_finalized_block(
                 RefundHandling::Refund { refund_ratio } => {
                     let source = Box::new(balance_identifier.clone());
                     if is_custom_payment {
+                        // in custom payment we have to do all payment handling up front.
+                        // therefore, if refunds are turned on we have to transfer the refunded
+                        // amount back to the specified refund purse.
+
+                        // the refund purse for a given transaction is set to the initiator's main
+                        // purse by default, but the custom payment provided by the initiator can
+                        // set a different purse when executed. thus, the handle payment system
+                        // contract tracks a refund purse and is handled internally at processing
+                        // time. Outer logic should never assume or refer to a specific purse for
+                        // purposes of refund. instead, `BalanceIdentifier::Refund` is used by outer
+                        // logic, which is interpreted by inner logic to use the currently set
+                        // refund purse.
                         let target = Box::new(BalanceIdentifier::Refund);
                         Some(HandleRefundMode::Refund {
                             initiator_addr: Box::new(initiator_addr.clone()),
@@ -692,7 +712,16 @@ pub fn execute_finalized_block(
                             target,
                         })
                     } else {
-                        Some(HandleRefundMode::RefundAmount {
+                        // in normal payment handling we put a temporary processing hold
+                        // on the paying purse rather than take the token up front.
+                        // thus, here we only want to determine the refund amount rather than
+                        // attempt to process a refund on something we haven't actually taken yet.
+                        // later in the flow when the processing hold is released and payment is
+                        // finalized we reduce the amount taken by the refunded amount. This avoids
+                        // the churn of taking the token up front via transfer (which writes
+                        // multiple permanent records) and then transfer some of it back (which
+                        // writes more permanent records).
+                        Some(HandleRefundMode::CalculateAmount {
                             limit: gas_limit.value(),
                             gas_price: current_gas_price,
                             consumed,
@@ -730,14 +759,7 @@ pub fn execute_finalized_block(
         let handle_fee_result = match fee_handling {
             FeeHandling::NoFee => {
                 // in this mode, a gas hold is placed on the payer's purse.
-                let amount = if is_custom_payment {
-                    // custom payment was pre-processed...in this flow hold amount is == cost
-                    cost
-                } else {
-                    // non-custom payment processing was deferred
-                    //  in this flow hold amount == cost - refund amount
-                    cost.saturating_sub(refund_amount)
-                };
+                let amount = cost.saturating_sub(refund_amount);
                 let hold_request = BalanceHoldRequest::new_gas_hold(
                     state_root_hash,
                     protocol_version,
@@ -858,14 +880,14 @@ pub fn execute_finalized_block(
             .observe(txn_processing_start.elapsed().as_secs_f64());
     }
 
-    // post processing starts now
+    // post-processing starts now
     let post_processing_start = Instant::now();
 
     // calculate and store checksums for approvals and execution effects across the transactions in
-    // the block we do this so that the full set of approvals and the full set of effect meta
-    // data can be verified if necessary for a given block. the block synchronizer in particular
+    // the block we do this so that the full set of approvals and the full set of effect metadata
+    // can be verified if necessary for a given block. the block synchronizer in particular
     // depends on the existence of such checksums.
-    let txns_approvals_hashes = {
+    let transaction_approvals_hashes = {
         let approvals_checksum = types::compute_approvals_checksum(transaction_ids.clone())
             .map_err(BlockExecutionError::FailedToComputeApprovalsChecksum)?;
         let execution_results_checksum = compute_execution_results_checksum(
@@ -964,7 +986,7 @@ pub fn execute_finalized_block(
         let step_processing_start = Instant::now();
 
         // force undelegate delegators outside delegation limits before the auction runs
-        debug!("starting forced undelegations");
+        debug!("starting forced undelegation");
         let forced_undelegate_req = ForcedUndelegateRequest::new(
             native_runtime_config.clone(),
             state_root_hash,
@@ -984,7 +1006,7 @@ pub fn execute_finalized_block(
                 state_root_hash = post_state_hash;
             }
         }
-        debug!("forced undelegations success");
+        debug!("forced undelegation success");
 
         debug!("committing step");
         let step_effects = match commit_step(
@@ -1046,7 +1068,7 @@ pub fn execute_finalized_block(
     };
 
     // Pruning -- this is orthogonal to the contents of the block, but we deliberately do it
-    // at the end to avoid an read ordering issue during block execution.
+    // at the end to avoid a read ordering issue during block execution.
     if let Some(previous_block_height) = block_height.checked_sub(1) {
         if let Some(keys_to_prune) = calculate_prune_eras(
             activation_point_era_id,
@@ -1221,7 +1243,7 @@ pub fn execute_finalized_block(
 
     let approvals_hashes = Box::new(ApprovalsHashes::new(
         *block.hash(),
-        txns_approvals_hashes,
+        transaction_approvals_hashes,
         proof_of_checksum_registry,
     ));
 

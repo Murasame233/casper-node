@@ -1473,7 +1473,7 @@ pub trait StateProvider: Send + Sync + Sized {
         };
 
         let result = match refund_mode {
-            HandleRefundMode::RefundAmount {
+            HandleRefundMode::CalculateAmount {
                 limit,
                 cost,
                 gas_price,
