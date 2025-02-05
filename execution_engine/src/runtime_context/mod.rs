@@ -857,7 +857,7 @@ where
             Ok(entity_addr) => key.is_addable(&entity_addr),
             Err(error) => {
                 error!(?error, "entity_key is unexpected key variant");
-                panic!("is_readable: entity_key is unexpected key variant");
+                panic!("is_addable: entity_key is unexpected key variant");
             }
         }
     }
@@ -868,7 +868,7 @@ where
             Ok(entity_addr) => key.is_writeable(&entity_addr),
             Err(error) => {
                 error!(?error, "entity_key is unexpected key variant");
-                panic!("is_readable: entity_key is unexpected key variant");
+                panic!("is_writeable: entity_key is unexpected key variant");
             }
         }
     }
