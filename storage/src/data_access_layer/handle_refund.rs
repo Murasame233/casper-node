@@ -44,8 +44,10 @@ pub enum HandleRefundMode {
         /// Target for refund.
         target: Box<BalanceIdentifier>,
     },
-    /// Place a custom hold.
-    CustomHold {
+    /// Special case of custom payment plus no fee plus no refund.
+    /// This ultimately turns into a hold on the initiator, but it takes extra steps to get there
+    /// to unwind the usual outcome of custom payment.
+    RefundNoFeeCustomPayment {
         /// Refund initiator.
         initiator_addr: Box<InitiatorAddr>,
         /// Refund limit.
@@ -85,7 +87,7 @@ impl HandleRefundMode {
         match self {
             HandleRefundMode::Burn { .. }
             | HandleRefundMode::Refund { .. }
-            | HandleRefundMode::CustomHold { .. }
+            | HandleRefundMode::RefundNoFeeCustomPayment { .. }
             | HandleRefundMode::RefundAmount { .. } => Phase::FinalizePayment,
 
             HandleRefundMode::ClearRefundPurse | HandleRefundMode::SetRefundPurse { .. } => {

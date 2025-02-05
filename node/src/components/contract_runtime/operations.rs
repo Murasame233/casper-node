@@ -15,7 +15,8 @@ use casper_storage::{
         balance::BalanceHandling,
         forced_undelegate::{ForcedUndelegateRequest, ForcedUndelegateResult},
         mint::BalanceIdentifierTransferArgs,
-        AuctionMethod, BalanceHoldKind, BalanceHoldRequest, BalanceIdentifier, BalanceRequest,
+        AuctionMethod, BalanceHoldKind, BalanceHoldRequest, BalanceIdentifier,
+        BalanceIdentifierPurseRequest, BalanceIdentifierPurseResult, BalanceRequest,
         BiddingRequest, BlockGlobalRequest, BlockGlobalResult, BlockRewardsRequest,
         BlockRewardsResult, DataAccessLayer, EntryPointRequest, EntryPointResult,
         EraValidatorsRequest, EraValidatorsResult, EvictItem, FeeRequest, FeeResult, FlushRequest,
@@ -97,6 +98,21 @@ pub fn execute_finalized_block(
     let pre_state_root_hash = execution_pre_state.pre_state_root_hash();
     let mut state_root_hash = pre_state_root_hash; // initial state root is parent's state root
 
+    let payment_balance_addr =
+        match data_access_layer.balance_purse(BalanceIdentifierPurseRequest::new(
+            state_root_hash,
+            protocol_version,
+            BalanceIdentifier::Payment,
+        )) {
+            BalanceIdentifierPurseResult::RootNotFound => {
+                return Err(BlockExecutionError::RootNotFound(state_root_hash))
+            }
+            BalanceIdentifierPurseResult::Failure(tce) => {
+                return Err(BlockExecutionError::BlockGlobal(format!("{:?}", tce)));
+            }
+            BalanceIdentifierPurseResult::Success { purse_addr } => purse_addr,
+        };
+
     // scrape variables from executable block
     let block_time = BlockTime::new(executable_block.timestamp.millis());
 
@@ -111,11 +127,11 @@ pub fn execute_finalized_block(
     let penalty_payment_amount = *casper_execution_engine::engine_state::MAX_PAYMENT;
     let balance_handling = BalanceHandling::Available;
 
-    // get scratch state, which must be used for all processing and post processing data
+    // get scratch state, which must be used for all processing and post-processing data
     // requirements.
     let scratch_state = data_access_layer.get_scratch_global_state();
 
-    // pre processing is finished
+    // pre-processing is finished
     if let Some(metrics) = metrics.as_ref() {
         metrics
             .exec_block_pre_processing
@@ -221,9 +237,11 @@ pub fn execute_finalized_block(
         equals the limit  for bytecode / wasm based transactions the consumed is based on
         what opcodes were executed and can range from >=0 to <=gas_limit.
         consumed is determined after execution and is used for refund & fee post processing.
+
+        we check these top level concerns early so that we can skip if there is an error
         */
 
-        // NOTE: this is the allowed computation limit   (gas limit)
+        // NOTE: this is the allowed computation limit (gas limit)
         let gas_limit =
             match stored_transaction.gas_limit(chainspec, transaction.transaction_lane()) {
                 Ok(gas) => gas,
@@ -253,8 +271,10 @@ pub fn execute_finalized_block(
         artifact_builder.with_added_cost(cost);
 
         let is_standard_payment = transaction.is_standard_payment();
+        let is_custom_payment = !is_standard_payment && transaction.is_custom_payment();
+        let is_v1_wasm = transaction.is_v1_wasm();
         let is_v2_wasm = transaction.is_v2_wasm();
-        let refund_purse_active = !is_standard_payment;
+        let refund_purse_active = is_custom_payment;
         if refund_purse_active {
             // if custom payment before doing any processing, initialize the initiator's main purse
             //  to be the refund purse for this transaction.
@@ -337,17 +357,16 @@ pub fn execute_finalized_block(
                     initiator_addr.clone().into()
                 }
             } else if is_v2_wasm {
+                // vm2 does not support custom payment, so it MUST be standard payment
                 // if transaction runtime is v2 then the initiating account will pay using
                 // the refund purse
-                BalanceIdentifier::PenalizedAccount(initiator_addr.account_hash())
-            } else {
+                initiator_addr.clone().into()
+            } else if is_custom_payment {
+                // this is the custom payment flow
                 // the initiating account will pay, but wants to do so with a different purse or
                 // in a custom way. If anything goes wrong, penalize the sender, do not execute
                 let custom_payment_gas_limit =
                     Gas::new(chainspec.transaction_config.native_transfer_minimum_motes * 5);
-
-                let payment_input_data = transaction.to_payment_input_data();
-
                 let pay_result = match WasmV1Request::new_custom_payment(
                     BlockInfo::new(
                         state_root_hash,
@@ -357,11 +376,9 @@ pub fn execute_finalized_block(
                         protocol_version,
                     ),
                     custom_payment_gas_limit,
-                    &payment_input_data,
+                    &transaction.to_payment_input_data(),
                 ) {
                     Ok(mut pay_request) => {
-                        // We'll send a hint to the custom payment logic on the amount
-                        // it should pay for the transaction to be executed.
                         pay_request
                             .args
                             .insert(ARG_AMOUNT, cost)
@@ -372,42 +389,61 @@ pub fn execute_finalized_block(
                         WasmV1Result::invalid_executable_item(custom_payment_gas_limit, error)
                     }
                 };
-                let balance_identifier = {
-                    if pay_result.error().is_some() {
-                        // Charge initiator for the penalty payment amount
-                        // the most expedient way to do this that aligns with later code
-                        // is to transfer from the initiator's main purse to the payment purse
-                        let transfer_result =
-                            scratch_state.transfer(TransferRequest::new_indirect(
-                                native_runtime_config.clone(),
-                                state_root_hash,
-                                protocol_version,
-                                transaction_hash,
-                                initiator_addr.clone(),
-                                authorization_keys.clone(),
-                                BalanceIdentifierTransferArgs::new(
-                                    None,
-                                    BalanceIdentifier::Account(initiator_addr.account_hash()),
-                                    BalanceIdentifier::Payment,
-                                    penalty_payment_amount,
-                                    None,
-                                ),
-                            ));
-                        artifact_builder
-                            .with_transfer_result(transfer_result)
-                            .map_err(|_| BlockExecutionError::RootNotFound(state_root_hash))?;
-                        BalanceIdentifier::PenalizedPayment
-                    } else {
-                        BalanceIdentifier::Payment
-                    }
-                };
-                state_root_hash =
-                    scratch_state.commit_effects(state_root_hash, pay_result.effects().clone())?;
-                artifact_builder
-                    .with_wasm_v1_result(pay_result)
-                    .map_err(|_| BlockExecutionError::RootNotFound(state_root_hash))?;
-                trace!(%transaction_hash, ?balance_identifier, "account session with custom payment");
-                balance_identifier
+
+                let insufficient_payment_deposited =
+                    !pay_result.balance_increased_by_amount(payment_balance_addr, cost);
+
+                if insufficient_payment_deposited || pay_result.error().is_some() {
+                    // Charge initiator for the penalty payment amount
+                    // the most expedient way to do this that aligns with later code
+                    // is to transfer from the initiator's main purse to the payment purse
+                    let transfer_result = scratch_state.transfer(TransferRequest::new_indirect(
+                        native_runtime_config.clone(),
+                        state_root_hash,
+                        protocol_version,
+                        transaction_hash,
+                        initiator_addr.clone(),
+                        authorization_keys.clone(),
+                        BalanceIdentifierTransferArgs::new(
+                            None,
+                            BalanceIdentifier::Account(initiator_addr.account_hash()),
+                            BalanceIdentifier::Payment,
+                            penalty_payment_amount,
+                            None,
+                        ),
+                    ));
+
+                    let msg = match pay_result.error() {
+                        Some(err) => format!("{}", err),
+                        None => {
+                            if insufficient_payment_deposited {
+                                "Insufficient custom payment".to_string()
+                            } else {
+                                "Unknown custom payment issue".to_string()
+                            }
+                        }
+                    };
+                    // commit penalty payment effects
+                    state_root_hash = scratch_state
+                        .commit_effects(state_root_hash, transfer_result.effects().clone())?;
+                    artifact_builder
+                        .with_error_message(msg)
+                        .with_transfer_result(transfer_result)
+                        .map_err(|_| BlockExecutionError::RootNotFound(state_root_hash))?;
+                    trace!(%transaction_hash, balance_identifier=?BalanceIdentifier::PenalizedPayment, "account session with custom payment failed");
+                    BalanceIdentifier::PenalizedPayment
+                } else {
+                    // commit successful effects
+                    state_root_hash = scratch_state
+                        .commit_effects(state_root_hash, pay_result.effects().clone())?;
+                    artifact_builder
+                        .with_wasm_v1_result(pay_result)
+                        .map_err(|_| BlockExecutionError::RootNotFound(state_root_hash))?;
+                    trace!(%transaction_hash, balance_identifier=?BalanceIdentifier::Payment, "account session with custom payment success");
+                    BalanceIdentifier::Payment
+                }
+            } else {
+                BalanceIdentifier::PenalizedAccount(initiator_addr.clone().account_hash())
             }
         };
 
@@ -423,10 +459,21 @@ pub fn execute_finalized_block(
 
         let allow_execution = {
             let is_not_penalized = !balance_identifier.is_penalty();
-            let sufficient_balance = post_payment_balance_result.is_sufficient(cost);
+            // in the case of custom payment, we do all payment processing up front
+            // after checking if the initiator can cover the penalty payment,
+            // and then either charge the full amount in the happy path
+            // or the penalty amount in the sad path...in whichever case
+            // the sad path is handled by is_penalty and the balance is 'sufficient'
+            let sufficient_balance =
+                is_custom_payment || post_payment_balance_result.is_sufficient(cost);
             let is_supported = chainspec.is_supported(lane_id);
-            trace!(%transaction_hash, ?sufficient_balance, ?is_not_penalized, ?is_supported, "payment preprocessing");
-            is_not_penalized && sufficient_balance && is_supported
+            let allow = is_not_penalized && sufficient_balance && is_supported;
+            if !allow {
+                info!(%transaction_hash, ?balance_identifier, ?sufficient_balance, ?is_not_penalized, ?is_supported, "payment preprocessing unsuccessful");
+            } else {
+                debug!(%transaction_hash, ?balance_identifier, ?sufficient_balance, ?is_not_penalized, ?is_supported, "payment preprocessing successful");
+            }
+            allow
         };
 
         if allow_execution {
@@ -507,42 +554,7 @@ pub fn execute_finalized_block(
                         }
                     };
                 }
-                _ if is_v2_wasm => match WasmV2Request::new(
-                    gas_limit,
-                    chainspec.network_config.name.clone(),
-                    state_root_hash,
-                    parent_block_hash,
-                    block_height,
-                    &transaction,
-                ) {
-                    Ok(wasm_v2_request) => {
-                        let result = wasm_v2_request.execute(
-                            &execution_engine_v2,
-                            state_root_hash,
-                            &scratch_state,
-                        );
-                        match result {
-                            Ok(wasm_v2_result) => {
-                                info!(contract_hash=wasm_v2_result.smart_contract_addr().map(base16::encode_lower).unwrap_or_default(),
-                                      pre_state_root_hash=%state_root_hash,
-                                      post_state_root_hash=%wasm_v2_result.post_state_hash(),
-                                      "install contract result");
-
-                                state_root_hash = wasm_v2_result.state_root_hash();
-
-                                artifact_builder.with_wasm_v2_result(wasm_v2_result);
-                            }
-                            Err(wasm_v2_error) => {
-                                artifact_builder.with_wasm_v2_error(wasm_v2_error);
-                            }
-                        }
-                    }
-                    Err(ire) => {
-                        debug!(%transaction_hash, ?lane_id, ?ire, "unable to get wasm v2 request");
-                        artifact_builder.with_invalid_wasm_v2_request(ire);
-                    }
-                },
-                _ if !is_v2_wasm => {
+                _ if is_v1_wasm => {
                     let wasm_v1_start = Instant::now();
                     let session_input_data = transaction.to_session_input_data();
                     match WasmV1Request::new_session(
@@ -581,10 +593,43 @@ pub fn execute_finalized_block(
                             .observe(wasm_v1_start.elapsed().as_secs_f64());
                     }
                 }
+                _ if is_v2_wasm => match WasmV2Request::new(
+                    gas_limit,
+                    chainspec.network_config.name.clone(),
+                    state_root_hash,
+                    parent_block_hash,
+                    block_height,
+                    &transaction,
+                ) {
+                    Ok(wasm_v2_request) => {
+                        let result = wasm_v2_request.execute(
+                            &execution_engine_v2,
+                            state_root_hash,
+                            &scratch_state,
+                        );
+                        match result {
+                            Ok(wasm_v2_result) => {
+                                info!(contract_hash=wasm_v2_result.smart_contract_addr().map(base16::encode_lower).unwrap_or_default(),
+                                      pre_state_root_hash=%state_root_hash,
+                                      post_state_root_hash=%wasm_v2_result.post_state_hash(),
+                                      "install contract result");
+
+                                state_root_hash = wasm_v2_result.state_root_hash();
+
+                                artifact_builder.with_wasm_v2_result(wasm_v2_result);
+                            }
+                            Err(wasm_v2_error) => {
+                                artifact_builder.with_wasm_v2_error(wasm_v2_error);
+                            }
+                        }
+                    }
+                    Err(ire) => {
+                        debug!(%transaction_hash, ?lane_id, ?ire, "unable to get wasm v2 request");
+                        artifact_builder.with_invalid_wasm_v2_request(ire);
+                    }
+                },
                 _ => unreachable!("either v1 or v2 wasm"),
             }
-        } else {
-            debug!(%transaction_hash, "not eligible for execution");
         }
 
         // clear all holds on the balance_identifier purse before payment processing
@@ -608,13 +653,13 @@ pub fn execute_finalized_block(
             let consumed = artifact_builder.consumed();
             let refund_mode = match refund_handling {
                 RefundHandling::NoRefund => {
-                    if fee_handling.is_no_fee() && !transaction.is_standard_payment() {
+                    if fee_handling.is_no_fee() && is_custom_payment {
                         // in no fee mode, we need to return the motes to the refund purse,
                         //  and then point the balance_identifier to the refund purse
                         // this will result in the downstream no fee handling logic
                         //  placing a hold on the correct purse.
                         balance_identifier = BalanceIdentifier::Refund;
-                        Some(HandleRefundMode::CustomHold {
+                        Some(HandleRefundMode::RefundNoFeeCustomPayment {
                             initiator_addr: Box::new(initiator_addr.clone()),
                             limit: gas_limit.value(),
                             gas_price: current_gas_price,
@@ -634,16 +679,7 @@ pub fn execute_finalized_block(
                 }),
                 RefundHandling::Refund { refund_ratio } => {
                     let source = Box::new(balance_identifier.clone());
-                    if transaction.is_standard_payment() {
-                        Some(HandleRefundMode::RefundAmount {
-                            limit: gas_limit.value(),
-                            gas_price: current_gas_price,
-                            consumed,
-                            cost,
-                            ratio: refund_ratio,
-                            source,
-                        })
-                    } else {
+                    if is_custom_payment {
                         let target = Box::new(BalanceIdentifier::Refund);
                         Some(HandleRefundMode::Refund {
                             initiator_addr: Box::new(initiator_addr.clone()),
@@ -654,6 +690,15 @@ pub fn execute_finalized_block(
                             ratio: refund_ratio,
                             source,
                             target,
+                        })
+                    } else {
+                        Some(HandleRefundMode::RefundAmount {
+                            limit: gas_limit.value(),
+                            gas_price: current_gas_price,
+                            consumed,
+                            cost,
+                            ratio: refund_ratio,
+                            source,
                         })
                     }
                 }
@@ -674,6 +719,7 @@ pub fn execute_finalized_block(
                     artifact_builder
                         .with_handle_refund_result(&handle_refund_result)
                         .map_err(|_| BlockExecutionError::RootNotFound(state_root_hash))?;
+
                     refunded_amount
                 }
                 None => U512::zero(),
@@ -683,9 +729,15 @@ pub fn execute_finalized_block(
         // handle fees per the chainspec determined setting.
         let handle_fee_result = match fee_handling {
             FeeHandling::NoFee => {
-                // in this mode, a gas hold for cost - refund (if any) is placed
-                // on the payer's purse.
-                let amount = cost.saturating_sub(refund_amount);
+                // in this mode, a gas hold is placed on the payer's purse.
+                let amount = if is_custom_payment {
+                    // custom payment was pre-processed...in this flow hold amount is == cost
+                    cost
+                } else {
+                    // non-custom payment processing was deferred
+                    //  in this flow hold amount == cost - refund amount
+                    cost.saturating_sub(refund_amount)
+                };
                 let hold_request = BalanceHoldRequest::new_gas_hold(
                     state_root_hash,
                     protocol_version,

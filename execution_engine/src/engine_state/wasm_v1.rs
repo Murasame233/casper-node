@@ -5,10 +5,14 @@ use thiserror::Error;
 
 use casper_storage::{data_access_layer::TransferResult, tracking_copy::TrackingCopyCache};
 use casper_types::{
-    account::AccountHash, bytesrepr::Bytes, contract_messages::Messages, execution::Effects,
+    account::AccountHash,
+    bytesrepr::Bytes,
+    contract_messages::Messages,
+    execution::{Effects, TransformKindV2},
     BlockHash, BlockTime, CLValue, DeployHash, Digest, ExecutableDeployItem, Gas, InitiatorAddr,
-    PackageHash, Phase, PricingMode, ProtocolVersion, RuntimeArgs, TransactionEntryPoint,
+    Key, PackageHash, Phase, PricingMode, ProtocolVersion, RuntimeArgs, TransactionEntryPoint,
     TransactionHash, TransactionInvocationTarget, TransactionTarget, TransactionV1Hash, Transfer,
+    URefAddr, U512,
 };
 
 use crate::engine_state::Error as EngineError;
@@ -625,6 +629,22 @@ impl WasmV1Result {
                 })
             }
         }
+    }
+
+    /// Checks effects for an AddUInt512 transform to a balance at imputed addr
+    /// and for exactly the imputed amount.
+    pub fn balance_increased_by_amount(&self, addr: URefAddr, amount: U512) -> bool {
+        if self.effects.is_empty() || self.effects.transforms().is_empty() {
+            return false;
+        }
+
+        let key = Key::Balance(addr);
+        if let Some(transform) = self.effects.transforms().iter().find(|x| x.key() == &key) {
+            if let TransformKindV2::AddUInt512(added) = transform.kind() {
+                return *added == amount;
+            }
+        }
+        false
     }
 }
 
