@@ -1410,7 +1410,7 @@ where
         + Send,
 {
     let codec = BinaryMessageCodec::new(config.max_message_size_bytes);
-    let mut framed = Framed::new(stream, codec.clone());
+    let mut framed = Framed::new(stream, codec);
     monitor
         .terminate_at(Timestamp::now() + config.initial_connection_lifetime)
         .await;

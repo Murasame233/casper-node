@@ -31,7 +31,7 @@ impl BinaryMessage {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct BinaryMessageCodec {
     max_message_size_bytes: u32,
 }
