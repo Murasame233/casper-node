@@ -54,7 +54,7 @@ pub enum BalanceIdentifierPurseResult {
 }
 
 impl BalanceIdentifierPurseResult {
-    /// Returns the purse address for a [`BalanceResult::Success`] variant.
+    /// Returns the purse address for a [`BalanceIdentifierPurseResult::Success`] variant.
     pub fn purse_addr(&self) -> Option<URefAddr> {
         match self {
             BalanceIdentifierPurseResult::Success { purse_addr, .. } => Some(*purse_addr),
