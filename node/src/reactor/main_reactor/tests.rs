@@ -12,7 +12,7 @@ use std::{
 };
 
 use casper_binary_port::{
-    BinaryMessage, BinaryMessageCodec, CommandHeader, BinaryResponseAndRequest, Command,
+    BinaryMessage, BinaryMessageCodec, BinaryResponseAndRequest, Command, CommandHeader,
     InformationRequest, Uptime,
 };
 use either::Either;
