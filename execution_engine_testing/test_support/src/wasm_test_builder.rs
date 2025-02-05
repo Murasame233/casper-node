@@ -17,7 +17,7 @@ use num_traits::{CheckedMul, Zero};
 use tempfile::TempDir;
 
 use casper_execution_engine::engine_state::{
-    Error, ExecutionEngineV1, WasmV1Request, WasmV1Result, DEFAULT_MAX_QUERY_DEPTH,
+    EngineConfig, Error, ExecutionEngineV1, WasmV1Request, WasmV1Result, DEFAULT_MAX_QUERY_DEPTH,
 };
 use casper_storage::{
     data_access_layer::{
@@ -1261,6 +1261,12 @@ where
     pub fn with_chainspec(&mut self, chainspec: ChainspecConfig) -> &mut Self {
         self.chainspec = chainspec;
         self.execution_engine = Rc::new(ExecutionEngineV1::new(self.chainspec.engine_config()));
+        self
+    }
+
+    /// Update the engine config of the builder.
+    pub fn with_engine_config(&mut self, engine_config: EngineConfig) -> &mut Self {
+        self.execution_engine = Rc::new(ExecutionEngineV1::new(engine_config));
         self
     }
 
