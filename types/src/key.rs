@@ -979,14 +979,6 @@ impl Key {
             }
         }
 
-        // if let Some(contract_entity_hash) = input.strip_prefix(STATE_PREFIX) {
-        //     let addr = match EntityAddr::from_formatted_str(contract_entity_hash) {
-        //         Ok(ret) => ret,
-        //         Err(err) => panic!("{err}"),
-        //     };
-        //     return Ok(Key::State(addr));
-        // }
-
         Err(FromStrError::UnknownPrefix)
     }
 
@@ -1018,16 +1010,6 @@ impl Key {
             _ => None,
         }
     }
-
-    // /// Returns [`EntityAddr`] of `self` if `self` is of type [`Key::AddressableEntity`],
-    // ///  otherwise returns `None`.
-    // pub fn as_entity_addr(&self) -> Option<EntityAddr> {
-    //     match self {
-    //         Key::AddressableEntity(addr) => Some(*addr),
-    //         Key::Account(account_hash) => Some(EntityAddr::Account(account_hash.value())),
-    //         _ => None,
-    //     }
-    // }
 
     /// Returns the inner bytes of `self` if `self` is of type [`Key::SmartContract`], otherwise
     /// returns `None`.
