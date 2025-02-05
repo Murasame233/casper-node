@@ -44,6 +44,7 @@ use casper_types::{
 #[cfg(test)]
 pub use self::lmdb::make_temporary_global_state;
 
+use super::trie_store::{operations::batch_write, TrieStoreCacheError};
 use crate::{
     data_access_layer::{
         auction::{AuctionMethodRet, BiddingRequest, BiddingResult},
@@ -58,20 +59,21 @@ use crate::{
         tagged_values::{TaggedValuesRequest, TaggedValuesResult},
         AddressableEntityRequest, AddressableEntityResult, AuctionMethod, BalanceHoldError,
         BalanceHoldKind, BalanceHoldMode, BalanceHoldRequest, BalanceHoldResult, BalanceIdentifier,
-        BalanceRequest, BalanceResult, BidsRequest, BidsResult, BlockGlobalKind,
-        BlockGlobalRequest, BlockGlobalResult, BlockRewardsError, BlockRewardsRequest,
-        BlockRewardsResult, ContractRequest, ContractResult, EntryPointExistsRequest,
-        EntryPointExistsResult, EntryPointRequest, EntryPointResult, EraValidatorsRequest,
-        ExecutionResultsChecksumRequest, ExecutionResultsChecksumResult, FeeError, FeeRequest,
-        FeeResult, FlushRequest, FlushResult, GenesisRequest, GenesisResult, HandleRefundMode,
-        HandleRefundRequest, HandleRefundResult, InsufficientBalanceHandling, MessageTopicsRequest,
-        MessageTopicsResult, ProofHandling, ProofsResult, ProtocolUpgradeRequest,
-        ProtocolUpgradeResult, PruneRequest, PruneResult, PutTrieRequest, PutTrieResult,
-        QueryRequest, QueryResult, RoundSeigniorageRateRequest, RoundSeigniorageRateResult,
-        SeigniorageRecipientsRequest, SeigniorageRecipientsResult, StepError, StepRequest,
-        StepResult, SystemEntityRegistryPayload, SystemEntityRegistryRequest,
-        SystemEntityRegistryResult, SystemEntityRegistrySelector, TotalSupplyRequest,
-        TotalSupplyResult, TrieRequest, TrieResult, EXECUTION_RESULTS_CHECKSUM_NAME,
+        BalanceIdentifierPurseRequest, BalanceIdentifierPurseResult, BalanceRequest, BalanceResult,
+        BidsRequest, BidsResult, BlockGlobalKind, BlockGlobalRequest, BlockGlobalResult,
+        BlockRewardsError, BlockRewardsRequest, BlockRewardsResult, ContractRequest,
+        ContractResult, EntryPointExistsRequest, EntryPointExistsResult, EntryPointRequest,
+        EntryPointResult, EraValidatorsRequest, ExecutionResultsChecksumRequest,
+        ExecutionResultsChecksumResult, FeeError, FeeRequest, FeeResult, FlushRequest, FlushResult,
+        GenesisRequest, GenesisResult, HandleRefundMode, HandleRefundRequest, HandleRefundResult,
+        InsufficientBalanceHandling, MessageTopicsRequest, MessageTopicsResult, ProofHandling,
+        ProofsResult, ProtocolUpgradeRequest, ProtocolUpgradeResult, PruneRequest, PruneResult,
+        PutTrieRequest, PutTrieResult, QueryRequest, QueryResult, RoundSeigniorageRateRequest,
+        RoundSeigniorageRateResult, SeigniorageRecipientsRequest, SeigniorageRecipientsResult,
+        StepError, StepRequest, StepResult, SystemEntityRegistryPayload,
+        SystemEntityRegistryRequest, SystemEntityRegistryResult, SystemEntityRegistrySelector,
+        TotalSupplyRequest, TotalSupplyResult, TrieRequest, TrieResult,
+        EXECUTION_RESULTS_CHECKSUM_NAME,
     },
     global_state::{
         error::Error as GlobalStateError,
@@ -95,8 +97,6 @@ use crate::{
     tracking_copy::{TrackingCopy, TrackingCopyEntityExt, TrackingCopyError, TrackingCopyExt},
     AddressGenerator,
 };
-
-use super::trie_store::{operations::batch_write, TrieStoreCacheError};
 
 /// A trait expressing the reading of state. This trait is used to abstract the underlying store.
 pub trait StateReader<K = Key, V = StoredValue>: Sized + Send + Sync {
@@ -751,6 +751,26 @@ pub trait StateProvider: Send + Sync + Sized {
         match tc.get_message_topics(message_topics_request.hash_addr()) {
             Ok(message_topics) => MessageTopicsResult::Success { message_topics },
             Err(tce) => MessageTopicsResult::Failure(tce),
+        }
+    }
+
+    /// Provides the underlying addr for the imputed balance identifier.
+    fn balance_purse(
+        &self,
+        request: BalanceIdentifierPurseRequest,
+    ) -> BalanceIdentifierPurseResult {
+        let mut tc = match self.tracking_copy(request.state_hash()) {
+            Ok(Some(tracking_copy)) => tracking_copy,
+            Ok(None) => return BalanceIdentifierPurseResult::RootNotFound,
+            Err(err) => return TrackingCopyError::Storage(err).into(),
+        };
+        let balance_identifier = request.identifier();
+        let protocol_version = request.protocol_version();
+        match balance_identifier.purse_uref(&mut tc, protocol_version) {
+            Ok(uref) => BalanceIdentifierPurseResult::Success {
+                purse_addr: uref.addr(),
+            },
+            Err(tce) => BalanceIdentifierPurseResult::Failure(tce),
         }
     }
 
@@ -1453,7 +1473,7 @@ pub trait StateProvider: Send + Sync + Sized {
         };
 
         let result = match refund_mode {
-            HandleRefundMode::RefundAmount {
+            HandleRefundMode::CalculateAmount {
                 limit,
                 cost,
                 gas_price,
@@ -1535,7 +1555,7 @@ pub trait StateProvider: Send + Sync + Sized {
                     Err(err) => Err(err),
                 }
             }
-            HandleRefundMode::CustomHold {
+            HandleRefundMode::RefundNoFeeCustomPayment {
                 initiator_addr,
                 limit,
                 cost,
