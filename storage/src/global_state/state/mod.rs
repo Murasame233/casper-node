@@ -1113,10 +1113,7 @@ pub trait StateProvider: Send + Sync + Sized {
 
     /// Get the requested era validators.
     fn era_validators(&self, request: EraValidatorsRequest) -> EraValidatorsResult {
-        match self.seigniorage_recipients(SeigniorageRecipientsRequest::new(
-            request.state_hash(),
-            request.protocol_version(),
-        )) {
+        match self.seigniorage_recipients(SeigniorageRecipientsRequest::new(request.state_hash())) {
             SeigniorageRecipientsResult::RootNotFound => EraValidatorsResult::RootNotFound,
             SeigniorageRecipientsResult::Failure(err) => EraValidatorsResult::Failure(err),
             SeigniorageRecipientsResult::ValueNotFound(msg) => {

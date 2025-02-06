@@ -1034,7 +1034,7 @@ pub fn execute_finalized_block(
         };
         debug!("step committed");
 
-        let era_validators_req = EraValidatorsRequest::new(state_root_hash, protocol_version);
+        let era_validators_req = EraValidatorsRequest::new(state_root_hash);
         let era_validators_result = data_access_layer.era_validators(era_validators_req);
 
         let upcoming_era_validators = match era_validators_result {
