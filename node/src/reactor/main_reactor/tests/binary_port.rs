@@ -20,7 +20,7 @@ use casper_storage::global_state::state::CommitProvider;
 use casper_types::{
     account::AccountHash,
     addressable_entity::{ActionThresholds, AssociatedKeys, NamedKeyAddr, NamedKeyValue},
-    bytesrepr::{FromBytes, ToBytes},
+    bytesrepr::{Bytes, FromBytes, ToBytes},
     contracts::{ContractHash, ContractPackage, ContractPackageHash},
     execution::{Effects, TransformKindV2, TransformV2},
     system::auction::DelegatorKind,
@@ -502,18 +502,13 @@ async fn binary_port_component_handles_all_requests() {
         },
     ) in test_cases.iter().enumerate()
     {
-        let header = CommandHeader::new(request.tag(), index as u16);
-        let header_bytes = ToBytes::to_bytes(&header).expect("should serialize");
+        let original_request_bytes = {
+            let header = CommandHeader::new(request.tag(), index as u16);
+            let header_bytes = ToBytes::to_bytes(&header).expect("should serialize");
+            let request_bytes = ToBytes::to_bytes(&request).expect("should serialize");
 
-        let original_request_bytes = header_bytes
-            .iter()
-            .chain(
-                ToBytes::to_bytes(&request)
-                    .expect("should serialize")
-                    .iter(),
-            )
-            .cloned()
-            .collect::<Vec<_>>();
+            [header_bytes, request_bytes].concat()
+        };
 
         client
             .send(BinaryMessage::new(original_request_bytes.clone()))
@@ -528,7 +523,7 @@ async fn binary_port_component_handles_all_requests() {
         let (binary_response_and_request, _): (BinaryResponseAndRequest, _) =
             FromBytes::from_bytes(response.payload()).expect("should deserialize response");
 
-        let bytes_sent_via_tcp = original_request_bytes.to_bytes().unwrap();
+        let bytes_sent_via_tcp = Bytes::from(original_request_bytes).to_bytes().unwrap();
         let mirrored_request_bytes = binary_response_and_request.request();
         assert_eq!(mirrored_request_bytes, bytes_sent_via_tcp, "{}", name);
 
