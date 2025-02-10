@@ -470,17 +470,24 @@ pub fn execute_finalized_block(
             // the penalty payment or the full amount but is 'sufficient' either way
             let is_sufficient_balance =
                 is_custom_payment || post_payment_balance_result.is_sufficient(cost);
-            let is_supported = chainspec.is_supported(lane_id);
-            let allow = is_not_penalized && is_sufficient_balance && is_supported;
+            let is_allowed_by_chainspec = chainspec.is_supported(lane_id);
+            let allow = is_not_penalized && is_sufficient_balance && is_allowed_by_chainspec;
             if !allow {
-                info!(%transaction_hash, ?balance_identifier, ?is_sufficient_balance, ?is_not_penalized, ?is_supported, "payment preprocessing unsuccessful");
+                if artifact_builder.error_message().is_none() {
+                    artifact_builder.with_error_message(format!(
+                        "penalized: {}, sufficient balance: {}, allowed by chainspec: {}",
+                        !is_not_penalized, is_sufficient_balance, is_allowed_by_chainspec
+                    ));
+                }
+                info!(%transaction_hash, ?balance_identifier, ?is_sufficient_balance, ?is_not_penalized, ?is_allowed_by_chainspec, "payment preprocessing unsuccessful");
             } else {
-                debug!(%transaction_hash, ?balance_identifier, ?is_sufficient_balance, ?is_not_penalized, ?is_supported, "payment preprocessing successful");
+                debug!(%transaction_hash, ?balance_identifier, ?is_sufficient_balance, ?is_not_penalized, ?is_allowed_by_chainspec, "payment preprocessing successful");
             }
             allow
         };
 
         if allow_execution {
+            debug!(%transaction_hash, ?allow_execution, "execution allowed");
             if is_standard_payment {
                 // place a processing hold on the paying account to prevent double spend.
                 let hold_amount = cost;

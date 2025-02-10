@@ -2957,7 +2957,6 @@ async fn add_and_withdraw_bid_transaction() {
     txn.sign(&BOB_SECRET_KEY);
 
     let (_txn_hash, _block_height, exec_result) = test.send_transaction(txn).await;
-    println!("{:?}", exec_result);
     assert!(exec_result_is_success(&exec_result));
 }
 
@@ -4195,4 +4194,83 @@ async fn gh_5082_install_upgrade_should_allow_adding_new_version() {
         exec_result_2.error_message(),
         Some("ApiError::NotAllowedToAddContractVersion [48]".to_string())
     ); // should not succeed, adding new contract version during payment is not allowed.
+}
+
+#[tokio::test]
+async fn should_allow_custom_payment() {
+    let config = SingleTransactionTestCase::default_test_config()
+        .with_pricing_handling(PricingHandling::Classic)
+        .with_refund_handling(RefundHandling::NoRefund)
+        .with_fee_handling(FeeHandling::NoFee);
+
+    let mut test = SingleTransactionTestCase::new(
+        ALICE_SECRET_KEY.clone(),
+        BOB_SECRET_KEY.clone(),
+        CHARLIE_SECRET_KEY.clone(),
+        Some(config),
+    )
+    .await;
+
+    test.fixture
+        .run_until_consensus_in_era(ERA_ONE, ONE_MIN)
+        .await;
+
+    // This WASM creates named key called "new_key". Then it would loop endlessly trying to write a
+    // value to storage. Eventually it will run out of gas and it should exit causing a revert.
+    let base_path = RESOURCES_PATH
+        .parent()
+        .unwrap()
+        .join("target")
+        .join("wasm32-unknown-unknown")
+        .join("release");
+
+    let payment_amount = U512::from(1_000_000u64);
+
+    let txn = {
+        let timestamp = Timestamp::now();
+        let ttl = TimeDiff::from_seconds(100);
+        let gas_price = 1;
+        let chain_name = test.chainspec().network_config.name.clone();
+
+        let payment = ExecutableDeployItem::ModuleBytes {
+            module_bytes: std::fs::read(base_path.join("non_standard_payment.wasm"))
+                .unwrap()
+                .into(),
+            args: runtime_args! {
+                "amount" => payment_amount,
+            },
+        };
+
+        let session = ExecutableDeployItem::ModuleBytes {
+            module_bytes: std::fs::read(base_path.join("do_nothing.wasm"))
+                .unwrap()
+                .into(),
+            args: runtime_args! {
+                "this_is_session" => true,
+            },
+        };
+
+        Transaction::Deploy(Deploy::new_signed(
+            timestamp,
+            ttl,
+            gas_price,
+            vec![],
+            chain_name.clone(),
+            payment,
+            session,
+            &ALICE_SECRET_KEY,
+            Some(ALICE_PUBLIC_KEY.clone()),
+        ))
+    };
+
+    let acct = get_balance(&mut test.fixture, &ALICE_PUBLIC_KEY, None, true);
+    assert!(acct.total_balance().cloned().unwrap() >= payment_amount);
+
+    let (_txn_hash, _block_height, exec_result) = test.send_transaction(txn).await;
+
+    assert_eq!(exec_result.error_message(), None);
+    assert!(
+        exec_result.consumed() > U512::zero(),
+        "should have consumed gas"
+    );
 }
