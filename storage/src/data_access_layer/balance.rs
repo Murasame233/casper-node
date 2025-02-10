@@ -176,7 +176,7 @@ impl BalanceIdentifier {
     pub fn is_penalty(&self) -> bool {
         matches!(
             self,
-            BalanceIdentifier::Payment | BalanceIdentifier::PenalizedPayment
+            BalanceIdentifier::PenalizedAccount(_) | BalanceIdentifier::PenalizedPayment
         )
     }
 }
