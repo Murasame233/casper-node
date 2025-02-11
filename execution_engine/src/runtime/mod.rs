@@ -1034,9 +1034,7 @@ where
 
         let result = match entry_point_name {
             auction::METHOD_GET_ERA_VALIDATORS => (|| {
-                runtime
-                    .context
-                    .charge_gas(auction_costs.get_era_validators.into())?;
+                runtime.charge_system_contract_call::<u64>(auction_costs.get_era_validators)?;
 
                 let result = runtime.get_era_validators().map_err(Self::reverter)?;
 
@@ -1233,7 +1231,7 @@ where
 
             // Type: `fn slash(validator_account_hashes: &[AccountHash]) -> Result<(), ExecError>`
             auction::METHOD_SLASH => (|| {
-                runtime.context.charge_gas(auction_costs.slash.into())?;
+                runtime.charge_system_contract_call(auction_costs.slash)?;
 
                 let validator_public_keys =
                     Self::get_named_argument(runtime_args, auction::ARG_VALIDATOR_PUBLIC_KEYS)?;
@@ -1246,9 +1244,7 @@ where
             // Type: `fn distribute(reward_factors: BTreeMap<PublicKey, u64>) -> Result<(),
             // ExecError>`
             auction::METHOD_DISTRIBUTE => (|| {
-                runtime
-                    .context
-                    .charge_gas(auction_costs.distribute.into())?;
+                runtime.charge_system_contract_call(auction_costs.distribute)?;
                 let rewards = Self::get_named_argument(runtime_args, auction::ARG_REWARDS_MAP)?;
                 runtime.distribute(rewards).map_err(Self::reverter)?;
                 CLValue::from_t(()).map_err(Self::reverter)
@@ -1256,9 +1252,7 @@ where
 
             // Type: `fn read_era_id() -> Result<EraId, ExecError>`
             auction::METHOD_READ_ERA_ID => (|| {
-                runtime
-                    .context
-                    .charge_gas(auction_costs.read_era_id.into())?;
+                runtime.charge_system_contract_call(auction_costs.read_era_id)?;
 
                 let result = runtime.read_era_id().map_err(Self::reverter)?;
                 CLValue::from_t(result).map_err(Self::reverter)
@@ -1995,7 +1989,7 @@ where
         let transfers = self.context.transfers_mut();
         runtime.context.transfers().clone_into(transfers);
 
-        return match result {
+        match result {
             Ok(_) => {
                 // If `Ok` and the `host_buffer` is `None`, the contract's execution succeeded but
                 // did not explicitly call `runtime::ret()`.  Treat as though the
@@ -2053,7 +2047,7 @@ where
                 }
                 Err(ExecError::Interpreter(error.into()))
             }
-        };
+        }
     }
 
     fn call_contract_host_buffer(

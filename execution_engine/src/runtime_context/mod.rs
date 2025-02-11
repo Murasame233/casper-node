@@ -1030,8 +1030,6 @@ where
     }
 
     /// Adds data to a global state key and charges for bytes stored.
-    ///
-    /// This method performs full validation of the key to be written.
     pub(crate) fn metered_add_gs_unsafe(
         &mut self,
         key: Key,
