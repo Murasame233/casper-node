@@ -504,6 +504,7 @@ impl<C: Context + 'static> Zug<C> {
         first_validator_idx: ValidatorIndex,
         round_id: RoundId,
     ) -> SyncRequest<C> {
+        //do logs
         let faulty = self.validator_bit_field(first_validator_idx, self.faults.keys().cloned());
         let active = self.validator_bit_field(first_validator_idx, self.active.keys_some());
         let round = match self.round(round_id) {
@@ -798,6 +799,8 @@ impl<C: Context + 'static> Zug<C> {
                 self.mark_dirty(round_id);
             }
         }
+        let round_id = self.current_round;
+        debug!(?round_id, "Calling update after handle_fault_no_wal");
         outcomes.extend(self.update(now));
         outcomes
     }
@@ -970,6 +973,7 @@ impl<C: Context + 'static> Zug<C> {
         sender: NodeId,
         now: Timestamp,
     ) -> ProtocolOutcomes<C> {
+        //do logs, see if we get the response, see if we get the proposal
         let SyncResponse {
             round_id,
             proposal_or_hash,
@@ -984,6 +988,11 @@ impl<C: Context + 'static> Zug<C> {
 
         // We have not asked for any sync response:
         if self.sent_sync_requests.try_remove_id(sync_id).is_none() {
+            debug!(
+                ?round_id,
+                ?sync_id,
+                "Disconnecting from peer due to unwanted sync response"
+            );
             return vec![ProtocolOutcome::Disconnect(sender)];
         }
 
@@ -995,16 +1004,39 @@ impl<C: Context + 'static> Zug<C> {
             .max(false_vote_sigs.len())
             > self.validators.len()
         {
+            debug!(
+                ?round_id,
+                ?sync_id,
+                "Disconnecting from peer due to mismatching echos number"
+            );
             return vec![ProtocolOutcome::Disconnect(sender)];
         }
 
+        let local_round_id = self.current_round;
         let (proposal_hash, proposal) = match proposal_or_hash {
             Some(Either::Left(proposal)) => {
                 let hashed_prop = HashedProposal::new(proposal);
-                (Some(*hashed_prop.hash()), Some(hashed_prop.into_inner()))
+                let hash = hashed_prop.hash();
+                debug!(?hash, ?round_id, ?local_round_id, "Got proposal from peer");
+                (Some(*hash), Some(hashed_prop.into_inner()))
             }
-            Some(Either::Right(hash)) => (Some(hash), None),
-            None => (None, None),
+            Some(Either::Right(hash)) => {
+                debug!(
+                    ?hash,
+                    ?round_id,
+                    ?local_round_id,
+                    "Got proposal hash from peer"
+                );
+                (Some(hash), None)
+            }
+            None => {
+                debug!(
+                    ?round_id,
+                    ?local_round_id,
+                    "Got no proposal or hash from peer"
+                );
+                (None, None)
+            }
         };
 
         // `signed_messages` is now the previous `signed_messages` + all the messages from
@@ -1133,6 +1165,8 @@ impl<C: Context + 'static> Zug<C> {
 
         self.record_entry(&ZugWalEntry::SignedMessage(signed_msg.clone()));
         if self.add_content(signed_msg) {
+            let round_id = self.current_round;
+            debug!(?round_id, "Calling update after add_content");
             Ok(self.update(now))
         } else {
             Ok(vec![])
@@ -1314,6 +1348,8 @@ impl<C: Context + 'static> Zug<C> {
         };
 
         let mut outcomes = self.validate_proposal(round_id, hashed_prop, ancestor_values, sender);
+        let round_id = self.current_round;
+        debug!(?round_id, "Calling update after handle_proposal");
         outcomes.extend(self.update(now));
         Ok(outcomes)
     }
@@ -1516,6 +1552,18 @@ impl<C: Context + 'static> Zug<C> {
                 "could not create a WAL using this file"
             ),
         }
+        /*
+        if let Some((id, round)) = self.rounds.last_key_value() {
+            //proposals
+            //echoes
+            //votes
+            round
+        }
+        */
+
+        /*
+        find whatever the last round was, get the content for this validator and resend the messages
+         */
 
         outcomes
     }
@@ -1645,6 +1693,7 @@ impl<C: Context + 'static> Zug<C> {
                 self.update_proposal_timeout(now);
             }
             // Vote for finalizing this proposal.
+            // do logs
             outcomes.extend(self.create_and_gossip_message(round_id, Content::Vote(true)));
             // Proposed descendants of this proposal can now be validated.
             if let Some(proposals) = self.proposals_waiting_for_parent.remove(&round_id) {
@@ -1666,10 +1715,10 @@ impl<C: Context + 'static> Zug<C> {
 
         if round_id == self.current_round {
             let our_idx = self.our_idx();
-            let current_timeout = self
-                .current_round_start
-                .saturating_add(self.proposal_timeout());
+            let current_round_start = self.current_round_start;
+            let current_timeout = current_round_start.saturating_add(self.proposal_timeout());
             if now >= current_timeout {
+                debug!(?round_id, "Voting false due to timeout");
                 let msg_outcomes = self.create_and_gossip_message(round_id, Content::Vote(false));
                 // Only update the proposal timeout if this is the first time we timed out in this
                 // round
@@ -1678,6 +1727,7 @@ impl<C: Context + 'static> Zug<C> {
                 }
                 outcomes.extend(msg_outcomes);
             } else if self.faults.contains_key(&self.leader(round_id)) {
+                debug!(?round_id, "Voting false due to faults");
                 outcomes.extend(self.create_and_gossip_message(round_id, Content::Vote(false)));
             }
             if self.is_skippable_round(round_id) || self.has_accepted_proposal(round_id) {
@@ -1707,6 +1757,10 @@ impl<C: Context + 'static> Zug<C> {
                         debug!(our_idx, %now, %current_timeout, "update_round - schedule update 2");
                         outcomes.extend(self.schedule_update(current_timeout));
                     }
+                } else {
+                    info!(round_id, "Scheduling proposal recheck");
+                    let updated_timestamp = now.saturating_add(self.proposal_timeout());
+                    outcomes.extend(self.schedule_update(updated_timestamp));
                 }
             } else {
                 error!(our_idx, "No suitable parent for current round");
@@ -2255,7 +2309,9 @@ where
                 if timestamp >= self.next_scheduled_update {
                     self.next_scheduled_update = Timestamp::MAX;
                 }
-                self.mark_dirty(self.current_round);
+                let current_round = self.current_round;
+                self.mark_dirty(current_round);
+                debug!(?current_round, "TIMER_ID_UPDATE");
                 self.update(now)
             }
             TIMER_ID_LOG_PARTICIPATION => {
@@ -2329,6 +2385,8 @@ where
             .filter(|idx| self.active[*idx].is_none() && !self.faults.contains_key(idx));
         let proposal = Proposal::with_block(&proposed_block, maybe_parent_round_id, inactive);
         let mut outcomes = self.create_echo_and_proposal(proposal);
+        let round_id = self.current_round;
+        warn!(?round_id, "Calling update after proposal");
         outcomes.extend(self.update(now));
         outcomes
     }
@@ -2468,7 +2526,9 @@ where
             self.paused = paused;
             // Reset the timeout to give the proposer another chance, after the pause.
             self.current_round_start = Timestamp::MAX;
-            self.mark_dirty(self.current_round);
+            let round_id = self.current_round;
+            self.mark_dirty(round_id);
+            debug!(?round_id, "Calling update after unpausing");
             self.update(now)
         } else {
             if self.paused != paused {
