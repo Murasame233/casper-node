@@ -1547,19 +1547,6 @@ impl<C: Context + 'static> Zug<C> {
                 "could not create a WAL using this file"
             ),
         }
-        /*
-        if let Some((id, round)) = self.rounds.last_key_value() {
-            //proposals
-            //echoes
-            //votes
-            round
-        }
-        */
-
-        /*
-        find whatever the last round was, get the content for this validator and resend the messages
-         */
-
         outcomes
     }
 
