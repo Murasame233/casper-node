@@ -504,7 +504,6 @@ impl<C: Context + 'static> Zug<C> {
         first_validator_idx: ValidatorIndex,
         round_id: RoundId,
     ) -> SyncRequest<C> {
-        //do logs
         let faulty = self.validator_bit_field(first_validator_idx, self.faults.keys().cloned());
         let active = self.validator_bit_field(first_validator_idx, self.active.keys_some());
         let round = match self.round(round_id) {
@@ -799,8 +798,7 @@ impl<C: Context + 'static> Zug<C> {
                 self.mark_dirty(round_id);
             }
         }
-        let round_id = self.current_round;
-        debug!(?round_id, "Calling update after handle_fault_no_wal");
+        debug!(round_id = ?self.current_round, "Calling update after handle_fault_no_wal");
         outcomes.extend(self.update(now));
         outcomes
     }
@@ -973,7 +971,6 @@ impl<C: Context + 'static> Zug<C> {
         sender: NodeId,
         now: Timestamp,
     ) -> ProtocolOutcomes<C> {
-        //do logs, see if we get the response, see if we get the proposal
         let SyncResponse {
             round_id,
             proposal_or_hash,
@@ -1165,8 +1162,7 @@ impl<C: Context + 'static> Zug<C> {
 
         self.record_entry(&ZugWalEntry::SignedMessage(signed_msg.clone()));
         if self.add_content(signed_msg) {
-            let round_id = self.current_round;
-            debug!(?round_id, "Calling update after add_content");
+            debug!(round_id = ?self.current_round, "Calling update after add_content");
             Ok(self.update(now))
         } else {
             Ok(vec![])
@@ -1348,8 +1344,7 @@ impl<C: Context + 'static> Zug<C> {
         };
 
         let mut outcomes = self.validate_proposal(round_id, hashed_prop, ancestor_values, sender);
-        let round_id = self.current_round;
-        debug!(?round_id, "Calling update after handle_proposal");
+        debug!(round_id = ?self.current_round, "Calling update after handle_proposal");
         outcomes.extend(self.update(now));
         Ok(outcomes)
     }
@@ -1693,7 +1688,6 @@ impl<C: Context + 'static> Zug<C> {
                 self.update_proposal_timeout(now);
             }
             // Vote for finalizing this proposal.
-            // do logs
             outcomes.extend(self.create_and_gossip_message(round_id, Content::Vote(true)));
             // Proposed descendants of this proposal can now be validated.
             if let Some(proposals) = self.proposals_waiting_for_parent.remove(&round_id) {
