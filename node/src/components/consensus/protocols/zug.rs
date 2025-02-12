@@ -1663,6 +1663,7 @@ impl<C: Context + 'static> Zug<C> {
     fn update_round(&mut self, round_id: RoundId, now: Timestamp) -> ProtocolOutcomes<C> {
         self.create_round(round_id);
         let mut outcomes = vec![];
+        let mut voted_on_round_outcome = false;
 
         // If we have a proposal, echo it.
         if let Some(&hash) = self.rounds[&round_id].proposal().map(HashedProposal::hash) {
@@ -1676,6 +1677,7 @@ impl<C: Context + 'static> Zug<C> {
             }
             // Vote for finalizing this proposal.
             outcomes.extend(self.create_and_gossip_message(round_id, Content::Vote(true)));
+            voted_on_round_outcome = true;
             // Proposed descendants of this proposal can now be validated.
             if let Some(proposals) = self.proposals_waiting_for_parent.remove(&round_id) {
                 let ancestor_values = self
@@ -1701,6 +1703,7 @@ impl<C: Context + 'static> Zug<C> {
             if now >= current_timeout {
                 debug!(?round_id, "Voting false due to timeout");
                 let msg_outcomes = self.create_and_gossip_message(round_id, Content::Vote(false));
+                voted_on_round_outcome = true;
                 // Only update the proposal timeout if this is the first time we timed out in this
                 // round
                 if !msg_outcomes.is_empty() {
@@ -1710,6 +1713,7 @@ impl<C: Context + 'static> Zug<C> {
             } else if self.faults.contains_key(&self.leader(round_id)) {
                 debug!(?round_id, "Voting false due to faults");
                 outcomes.extend(self.create_and_gossip_message(round_id, Content::Vote(false)));
+                voted_on_round_outcome = true;
             }
             if self.is_skippable_round(round_id) || self.has_accepted_proposal(round_id) {
                 self.current_round_start = Timestamp::MAX;
@@ -1739,9 +1743,12 @@ impl<C: Context + 'static> Zug<C> {
                         outcomes.extend(self.schedule_update(current_timeout));
                     }
                 } else {
-                    info!(round_id, "Scheduling proposal recheck");
-                    let updated_timestamp = now.saturating_add(self.proposal_timeout());
-                    outcomes.extend(self.schedule_update(updated_timestamp));
+                    if !voted_on_round_outcome {
+                        // If we weren't able to come to a voting conclusion we need to reschedule the check in future.
+                        info!(round_id, "Scheduling proposal recheck");
+                        let updated_timestamp = now.saturating_add(self.proposal_timeout());
+                        outcomes.extend(self.schedule_update(updated_timestamp));
+                    }
                 }
             } else {
                 error!(our_idx, "No suitable parent for current round");
