@@ -338,9 +338,7 @@ impl ValidatorMatrix {
     }
 
     fn cache_head_max_len(&self) -> usize {
-        let min_plus_auction_delay = MINIMUM_CUSP_ERA_COUNT + self.auction_delay;
-        let signature_rewards_max_delay = self.signature_rewards_max_delay;
-        min_plus_auction_delay.max(signature_rewards_max_delay) as usize
+        MINIMUM_CUSP_ERA_COUNT.saturating_add(self.auction_delay) as usize
     }
 
     fn cache_tail_max_len(&self) -> usize {
