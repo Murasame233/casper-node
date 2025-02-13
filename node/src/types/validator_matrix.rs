@@ -17,7 +17,7 @@ use casper_types::{
     BlockHeaderV2, ChainNameDigest, EraId, FinalitySignatureV2, PublicKey, SecretKey, U512,
 };
 
-const MAX_VALIDATOR_MATRIX_ENTRIES: usize = 6;
+const MAX_VALIDATOR_MATRIX_ENTRIES: usize = 8;
 const_assert!(MAX_VALIDATOR_MATRIX_ENTRIES % 2 == 0);
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone, DataSize)]
