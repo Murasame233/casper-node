@@ -1742,14 +1742,12 @@ impl<C: Context + 'static> Zug<C> {
                         debug!(our_idx, %now, %current_timeout, "update_round - schedule update 2");
                         outcomes.extend(self.schedule_update(current_timeout));
                     }
-                } else {
-                    if !voted_on_round_outcome {
-                        // If we weren't able to come to a voting conclusion we need to reschedule
-                        // the check in future.
-                        debug!(round_id, "Scheduling proposal recheck");
-                        let updated_timestamp = now.saturating_add(self.proposal_timeout());
-                        outcomes.extend(self.schedule_update(updated_timestamp));
-                    }
+                } else if !voted_on_round_outcome {
+                    // If we weren't able to come to a voting conclusion we need to reschedule
+                    // the check in future.
+                    debug!(round_id, "Scheduling proposal recheck");
+                    let updated_timestamp = now.saturating_add(self.proposal_timeout());
+                    outcomes.extend(self.schedule_update(updated_timestamp));
                 }
             } else {
                 error!(our_idx, "No suitable parent for current round");
