@@ -1744,8 +1744,9 @@ impl<C: Context + 'static> Zug<C> {
                     }
                 } else {
                     if !voted_on_round_outcome {
-                        // If we weren't able to come to a voting conclusion we need to reschedule the check in future.
-                        info!(round_id, "Scheduling proposal recheck");
+                        // If we weren't able to come to a voting conclusion we need to reschedule
+                        // the check in future.
+                        debug!(round_id, "Scheduling proposal recheck");
                         let updated_timestamp = now.saturating_add(self.proposal_timeout());
                         outcomes.extend(self.schedule_update(updated_timestamp));
                     }
