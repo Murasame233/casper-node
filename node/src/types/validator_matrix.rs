@@ -54,6 +54,7 @@ pub(crate) struct ValidatorMatrix {
 }
 
 impl ValidatorMatrix {
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         finality_threshold_fraction: Ratio<u64>,
         chainspec_name_hash: ChainNameDigest,
