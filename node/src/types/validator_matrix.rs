@@ -357,8 +357,7 @@ impl ValidatorMatrix {
         let signature_rewards_max_delay =
             self.signature_rewards_max_delay
                 .saturating_add(PROPOSED_BLOCK_ERA_TOLERANCE) as usize;
-        let ret = min_plus_auction_delay.max(signature_rewards_max_delay);
-        ret
+        min_plus_auction_delay.max(signature_rewards_max_delay)
     }
 
     #[cfg(test)]
@@ -702,9 +701,10 @@ mod tests {
 
     #[test]
     fn register_validator_weights_latched_pruning() {
-        // TODO: write a version of this test that is not hardcoded with so many assumptions about the
-        // internal state of the matrix. The replacement test should dynamically determine the range
-        // and misc idx and count variables rather than hard coding them.
+        // TODO: write a version of this test that is not hardcoded with so many assumptions about
+        // the internal state of the matrix. The replacement test should dynamically
+        // determine the range and misc idx and count variables rather than hard coding
+        // them.
 
         // Create a validator matrix and saturate it with entries.
         let mut validator_matrix = ValidatorMatrix::new_with_validator(ALICE_SECRET_KEY.clone())
