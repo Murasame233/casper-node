@@ -23,6 +23,7 @@ use wasmer::{
 };
 use wasmer_compiler_singlepass::Singlepass;
 use wasmer_middlewares::metering;
+use casper_types::{HostFunction, HostFunctionCost};
 
 use metering_middleware::make_wasmer_metering_middleware;
 
@@ -200,11 +201,11 @@ impl<'a, S: GlobalStateReader + 'static, E: Executor + 'static> Caller for Wasme
     }
 
     /// Set the amount of gas used.
-    fn consume_gas(&mut self, new_value: u64) -> MeteringPoints {
+    fn consume_gas(&mut self, amount: u64) -> MeteringPoints {
         let gas_consumed = self.gas_consumed();
         match gas_consumed {
-            MeteringPoints::Remaining(remaining_points) if remaining_points >= new_value => {
-                let remaining_points = remaining_points - new_value;
+            MeteringPoints::Remaining(remaining_points) if remaining_points >= amount => {
+                let remaining_points = remaining_points - amount;
                 self.set_remaining_points(remaining_points);
                 MeteringPoints::Remaining(remaining_points)
             }
@@ -215,6 +216,20 @@ impl<'a, S: GlobalStateReader + 'static, E: Executor + 'static> Caller for Wasme
 
     fn has_export(&self, name: &str) -> bool {
         self.with_instance(|instance| instance.exports.contains(name))
+    }
+    
+    fn charge_host_function_call<T>(
+        &mut self,
+        host_function: &HostFunction<T>,
+        weights: T,
+    ) -> MeteringPoints
+    where
+        T: AsRef<[HostFunctionCost]> + Copy,
+    {
+        let Some(cost) = host_function.calculate_gas_cost(weights) else {
+            return MeteringPoints::Exhausted; // Overflowing gas calculation means gas limit was exceeded
+        };
+        self.consume_gas(cost.value().as_u64())
     }
 }
 

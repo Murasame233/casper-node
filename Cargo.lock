@@ -832,6 +832,7 @@ dependencies = [
  "casper-executor-wasm-interface",
  "casper-sdk-sys",
  "casper-storage",
+ "casper-types",
  "once_cell",
  "regex",
  "wasmer",

@@ -1,6 +1,7 @@
 pub mod executor;
 
 use bytes::Bytes;
+use casper_types::{HostFunction, HostFunctionCost, HostFunctionCosts};
 use thiserror::Error;
 
 use casper_executor_wasm_common::flags::ReturnFlags;
@@ -175,6 +176,7 @@ pub type VMResult<T> = Result<T, VMError>;
 pub struct Config {
     gas_limit: u64,
     memory_limit: u32,
+    host_function_costs: HostFunctionCosts
 }
 
 impl Config {
@@ -185,6 +187,10 @@ impl Config {
     pub fn memory_limit(&self) -> u32 {
         self.memory_limit
     }
+
+    pub fn host_function_costs(&self) -> HostFunctionCosts {
+        self.host_function_costs
+    }
 }
 
 /// Configuration for the Wasm engine.
@@ -193,6 +199,7 @@ pub struct ConfigBuilder {
     gas_limit: Option<u64>,
     /// Memory limit in pages.
     memory_limit: Option<u32>,
+    host_function_costs: Option<HostFunctionCosts>,
 }
 
 impl ConfigBuilder {
@@ -213,13 +220,21 @@ impl ConfigBuilder {
         self
     }
 
+    /// Host function costs
+    pub fn with_host_function_costs(mut self, host_function_costs: HostFunctionCosts) -> Self {
+        self.host_function_costs = Some(host_function_costs);
+        self
+    }
+
     /// Build the configuration.
     pub fn build(self) -> Config {
-        let gas_limit = self.gas_limit.expect("Required field");
-        let memory_limit = self.memory_limit.expect("Required field");
+        let gas_limit = self.gas_limit.expect("Required field missing: gas_limit");
+        let memory_limit = self.memory_limit.expect("Required field missing: memory_limit");
+        let host_function_costs = self.host_function_costs.expect("Required field missing: host_function_costs");
         Config {
             gas_limit,
             memory_limit,
+            host_function_costs,
         }
     }
 }
@@ -272,6 +287,14 @@ pub trait Caller {
     fn gas_consumed(&mut self) -> MeteringPoints;
     /// Set the amount of gas used.
     fn consume_gas(&mut self, value: u64) -> MeteringPoints;
+    /// Consumes a set amount of gas for the specified host function and weights
+    fn charge_host_function_call<T>(
+        &mut self,
+        host_function: &HostFunction<T>,
+        weights: T,
+    ) -> MeteringPoints
+    where
+        T: AsRef<[HostFunctionCost]> + Copy;
 }
 
 #[derive(Debug, Error)]

@@ -163,7 +163,21 @@ impl ContractRuntime {
             .map_err(ConfigError::GlobalState)?,
         );
 
-        let execution_engine_v1 = Arc::new(ExecutionEngineV1::new(engine_config));
+        // TODO: Investiage the following;
+        // The V2 executor *needs* to use V1 engine for legacy contract execution, that is
+        // (from what I see) required for V1<->V2 interopability (i.e. calling V1 contracts from V2).
+        // 
+        // The way this seems to be achieved right now is that ExecutorV2::new creates its own ExecutionEngineV1
+        // instance under the hood, and uses that. This is alarming to me (!!!), because we open ourselves to a
+        // class of problems and headaches.
+        //
+        // Since the below is wrapped in an Arc, it might be better for ExecutorV2 to hold that instead.
+        // Eg. ExecutorV2::new([...], Arc::clone(execution_engine_v1));
+        //
+        // And if the above is not feasible, it's ESSENTIAL that both these EEV1 instances be kept in-sync.
+        // Ie. a v1 contract executed from vm2 should behave the same as if it were called from vm1 and produce
+        // EXACTLY the same effects/mutations.
+        let execution_engine_v1 = Arc::new(ExecutionEngineV1::new(engine_config.clone()));
 
         let executor_v2 = {
             let executor_config = ExecutorConfigBuilder::default()
@@ -171,7 +185,7 @@ impl ContractRuntime {
                 .with_executor_kind(ExecutorKind::Compiled)
                 .build()
                 .expect("Should build");
-            ExecutorV2::new(executor_config)
+            ExecutorV2::new(executor_config, engine_config)
         };
 
         let metrics = Arc::new(Metrics::new(registry)?);
