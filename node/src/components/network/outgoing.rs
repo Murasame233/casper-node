@@ -1029,8 +1029,8 @@ where
         }
         let z = max - min;
         let multiplier: f32 = rng.gen_range(0.0..=1.0);
-        let q: Duration = z.mul_f32(multiplier);
-        now + q
+        let block_duration = z.mul_f32(multiplier);
+        now + block_duration
     }
 }
 

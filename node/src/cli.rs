@@ -182,7 +182,7 @@ impl Cli {
                     bail!("invalid chainspec");
                 }
 
-                if !validate_config(&reactor_config.value()) {
+                if !validate_config(reactor_config.value()) {
                     bail!("invalid config");
                 }
 
