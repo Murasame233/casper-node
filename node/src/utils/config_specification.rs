@@ -4,7 +4,7 @@ pub fn validate_config(config: &Config) -> bool {
     if config.network.blocklist_retain_max_duration < config.network.blocklist_retain_min_duration {
         return false;
     }
-    true;
+    true
 }
 
 #[cfg(test)]

@@ -1027,9 +1027,7 @@ where
         if min == max {
             return now + min;
         }
-        let z = max - min;
-        let multiplier: f32 = rng.gen_range(0.0..=1.0);
-        let block_duration = z.mul_f32(multiplier);
+        let block_duration = rng.gen_range(min..=max);
         now + block_duration
     }
 }
