@@ -113,7 +113,7 @@ impl Era {
     }
 
     /// Marks the block payload as valid or invalid. Returns `false` if the block was not present
-    /// or is still missing evidence. Otherwise it returns `true`: The block can now be processed
+    /// or is still missing evidence. Otherwise, it returns `true`: The block can now be processed
     /// by the consensus protocol.
     pub(crate) fn resolve_validity(
         &mut self,
