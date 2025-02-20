@@ -887,6 +887,10 @@ impl FromBytes for StoredValue {
 }
 
 mod serde_helpers {
+    use thiserror::Error;
+
+    use crate::serde_helpers::contract::HumanReadableContract;
+
     use super::*;
 
     #[derive(Serialize)]
@@ -894,7 +898,7 @@ mod serde_helpers {
         CLValue(&'a CLValue),
         Account(&'a Account),
         ContractWasm(&'a ContractWasm),
-        Contract(&'a Contract),
+        Contract(HumanReadableContract),
         ContractPackage(&'a ContractPackage),
         Transfer(&'a TransferV1),
         DeployInfo(&'a DeployInfo),
@@ -920,7 +924,7 @@ mod serde_helpers {
         CLValue(CLValue),
         Account(Account),
         ContractWasm(ContractWasm),
-        Contract(Contract),
+        Contract(HumanReadableContract),
         ContractPackage(ContractPackage),
         Transfer(TransferV1),
         DeployInfo(DeployInfo),
@@ -946,7 +950,7 @@ mod serde_helpers {
                 StoredValue::CLValue(payload) => HumanReadableSerHelper::CLValue(payload),
                 StoredValue::Account(payload) => HumanReadableSerHelper::Account(payload),
                 StoredValue::ContractWasm(payload) => HumanReadableSerHelper::ContractWasm(payload),
-                StoredValue::Contract(payload) => HumanReadableSerHelper::Contract(payload),
+                StoredValue::Contract(payload) => HumanReadableSerHelper::Contract(payload.into()),
                 StoredValue::ContractPackage(payload) => {
                     HumanReadableSerHelper::ContractPackage(payload)
                 }
@@ -980,15 +984,28 @@ mod serde_helpers {
         }
     }
 
-    impl From<HumanReadableDeserHelper> for StoredValue {
-        fn from(helper: HumanReadableDeserHelper) -> Self {
-            match helper {
+    /// Parsing error when deserializing StoredValue.
+    #[derive(Debug, Clone, Error)]
+    pub enum StoredValueDeserializationError {
+        /// Contract not deserializable.
+        #[error("Could not deserialize StoredValue::Contract. Reason: {0}")]
+        CouldNotDeserializeContract(String),
+    }
+
+    impl TryFrom<HumanReadableDeserHelper> for StoredValue {
+        type Error = StoredValueDeserializationError;
+        fn try_from(helper: HumanReadableDeserHelper) -> Result<Self, Self::Error> {
+            Ok(match helper {
                 HumanReadableDeserHelper::CLValue(payload) => StoredValue::CLValue(payload),
                 HumanReadableDeserHelper::Account(payload) => StoredValue::Account(payload),
                 HumanReadableDeserHelper::ContractWasm(payload) => {
                     StoredValue::ContractWasm(payload)
                 }
-                HumanReadableDeserHelper::Contract(payload) => StoredValue::Contract(payload),
+                HumanReadableDeserHelper::Contract(payload) => {
+                    StoredValue::Contract(Contract::try_from(payload).map_err(|e| {
+                        StoredValueDeserializationError::CouldNotDeserializeContract(e.to_string())
+                    })?)
+                }
                 HumanReadableDeserHelper::ContractPackage(payload) => {
                     StoredValue::ContractPackage(payload)
                 }
@@ -1015,7 +1032,7 @@ mod serde_helpers {
                 HumanReadableDeserHelper::NamedKey(payload) => StoredValue::NamedKey(payload),
                 HumanReadableDeserHelper::EntryPoint(payload) => StoredValue::EntryPoint(payload),
                 HumanReadableDeserHelper::RawBytes(bytes) => StoredValue::RawBytes(bytes.into()),
-            }
+            })
         }
     }
 }
@@ -1037,7 +1054,7 @@ impl<'de> Deserialize<'de> for StoredValue {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         if deserializer.is_human_readable() {
             let json_helper = serde_helpers::HumanReadableDeserHelper::deserialize(deserializer)?;
-            Ok(StoredValue::from(json_helper))
+            StoredValue::try_from(json_helper).map_err(de::Error::custom)
         } else {
             let bytes = ByteBuf::deserialize(deserializer)?.into_vec();
             bytesrepr::deserialize::<StoredValue>(bytes)
@@ -1051,6 +1068,75 @@ mod tests {
     use crate::{bytesrepr, gens, StoredValue};
     use proptest::proptest;
     use serde_json::Value;
+
+    const STORED_VALUE_CONTRACT_RAW: &str = r#"{
+    "Contract": {
+            "contract_package_hash": "contract-package-e26c7f95890f99b4d476609649939910e636e175c428add9b403ebe597673005",
+            "contract_wasm_hash": "contract-wasm-8447a228c6055df42fcedb18804786abcab0e7aed00e94ad0fc0a34cd09509fb",
+            "named_keys": [
+                {
+                    "name": "count_v2.0",
+                    "key": "uref-53834a8313fa5eda357a75ef8eb017e1ed30bc64e6dbaa81a41abd0ffd761586-007"
+                }
+            ],
+            "entry_points": [
+                {
+                    "name": "counter_get",
+                    "args": [],
+                    "ret": "I32",
+                    "access": "Public",
+                    "entry_point_type": "Called"
+                },
+                {
+                    "name": "counter_inc",
+                    "args": [],
+                    "ret": "Unit",
+                    "access": "Public",
+                    "entry_point_type": "Called"
+                }
+            ],
+            "protocol_version": "2.0.0"
+        }
+}
+    "#;
+
+    const JSON_CONTRACT_NON_UNIQUE_ENTRYPOINT_NAMES_RAW: &str = r#"{
+        "Contract": {
+                "contract_package_hash": "contract-package-e26c7f95890f99b4d476609649939910e636e175c428add9b403ebe597673005",
+                "contract_wasm_hash": "contract-wasm-8447a228c6055df42fcedb18804786abcab0e7aed00e94ad0fc0a34cd09509fb",
+                "named_keys": [
+                    {
+                        "name": "count_v2.0",
+                        "key": "uref-53834a8313fa5eda357a75ef8eb017e1ed30bc64e6dbaa81a41abd0ffd761586-007"
+                    }
+                ],
+                "entry_points": [
+                    {
+                        "name": "counter_get",
+                        "args": [],
+                        "ret": "I32",
+                        "access": "Public",
+                        "entry_point_type": "Called"
+                    },
+                    {
+                        "name": "counter_get",
+                        "args": [],
+                        "ret": "Unit",
+                        "access": "Public",
+                        "entry_point_type": "Caller"
+                    },
+                    {
+                        "name": "counter_inc",
+                        "args": [],
+                        "ret": "Unit",
+                        "access": "Public",
+                        "entry_point_type": "Called"
+                    }
+                ],
+                "protocol_version": "2.0.0"
+            }
+    }
+        "#;
 
     const STORED_VALUE_CONTRACT_PACKAGE_RAW: &str = r#"
     {
@@ -1068,6 +1154,7 @@ mod tests {
           "lock_status": "Unlocked"
         }
     }"#;
+
     const INCORRECT_STORED_VALUE_CONTRACT_PACKAGE_RAW: &str = r#"
     {
         "ContractPackage": {
@@ -1090,6 +1177,25 @@ mod tests {
         }
     }
     "#;
+
+    #[test]
+    fn contract_stored_value_serializes_entry_points_to_flat_array() {
+        let res =
+            serde_json::from_str::<StoredValue>(JSON_CONTRACT_NON_UNIQUE_ENTRYPOINT_NAMES_RAW);
+        assert!(res.is_err());
+        assert_eq!(
+            res.err().unwrap().to_string(),
+            "Could not deserialize StoredValue::Contract. Reason: Non unique `entry_points.name`"
+        )
+    }
+
+    #[test]
+    fn cannot_deserialize_contract_with_non_unique_entry_point_names() {
+        let value_from_raw_json = serde_json::from_str::<Value>(STORED_VALUE_CONTRACT_RAW).unwrap();
+        let deserialized = serde_json::from_str::<StoredValue>(STORED_VALUE_CONTRACT_RAW).unwrap();
+        let roundtrip_value = serde_json::to_value(&deserialized).unwrap();
+        assert_eq!(value_from_raw_json, roundtrip_value);
+    }
 
     #[test]
     fn contract_package_stored_value_serializes_versions_to_flat_array() {

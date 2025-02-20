@@ -108,6 +108,76 @@ pub(crate) mod deploy_hash_as_array {
     }
 }
 
+pub mod contract {
+    #[cfg(feature = "json-schema")]
+    use schemars::JsonSchema;
+    use serde::{Deserialize, Serialize};
+    use thiserror::Error;
+
+    use crate::{
+        contracts::{ContractPackageHash, EntryPoint, EntryPoints},
+        Contract, ContractWasmHash, NamedKeys, ProtocolVersion,
+    };
+    #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+    #[cfg_attr(feature = "json-schema", derive(JsonSchema))]
+    #[cfg_attr(feature = "json-schema", schemars(rename = "Contract"))]
+    pub struct HumanReadableContract {
+        pub(crate) contract_package_hash: ContractPackageHash,
+        pub(crate) contract_wasm_hash: ContractWasmHash,
+        pub(crate) named_keys: NamedKeys,
+        pub(crate) entry_points: Vec<EntryPoint>,
+        pub(crate) protocol_version: ProtocolVersion,
+    }
+
+    impl From<&Contract> for HumanReadableContract {
+        fn from(value: &Contract) -> Self {
+            Self {
+                contract_package_hash: value.contract_package_hash(),
+                contract_wasm_hash: value.contract_wasm_hash(),
+                named_keys: value.named_keys().clone(),
+                protocol_version: value.protocol_version(),
+                entry_points: value.entry_points().clone().take_entry_points(),
+            }
+        }
+    }
+
+    /// Parsing error when deserializing StoredValue.
+    #[derive(Debug, Clone, Error)]
+    pub enum ContractDeserializationError {
+        /// Contract not deserializable.
+        #[error("Non unique `entry_points.name`")]
+        NonUniqueEntryPointName,
+    }
+
+    impl TryFrom<HumanReadableContract> for Contract {
+        type Error = ContractDeserializationError;
+        fn try_from(value: HumanReadableContract) -> Result<Self, Self::Error> {
+            let HumanReadableContract {
+                contract_package_hash,
+                contract_wasm_hash,
+                named_keys,
+                entry_points,
+                protocol_version,
+            } = value;
+            let mut entry_points_map = EntryPoints::new();
+            for entry_point in entry_points {
+                if let Some(_) = entry_points_map.add_entry_point(entry_point) {
+                    //There were duplicate entries in regards to 'name'
+                    return Err(ContractDeserializationError::NonUniqueEntryPointName);
+                }
+            }
+
+            Ok(Contract::new(
+                contract_package_hash,
+                contract_wasm_hash,
+                named_keys,
+                entry_points_map,
+                protocol_version,
+            ))
+        }
+    }
+}
+
 pub mod contract_package {
     use core::convert::TryFrom;
 
