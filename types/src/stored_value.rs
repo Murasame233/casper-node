@@ -887,7 +887,7 @@ impl FromBytes for StoredValue {
 }
 
 mod serde_helpers {
-    use thiserror::Error;
+    use core::fmt::Display;
 
     use crate::serde_helpers::contract::HumanReadableContract;
 
@@ -985,11 +985,23 @@ mod serde_helpers {
     }
 
     /// Parsing error when deserializing StoredValue.
-    #[derive(Debug, Clone, Error)]
+    #[derive(Debug, Clone)]
     pub enum StoredValueDeserializationError {
         /// Contract not deserializable.
-        #[error("Could not deserialize StoredValue::Contract. Reason: {0}")]
         CouldNotDeserializeContract(String),
+    }
+
+    impl Display for StoredValueDeserializationError {
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            match self {
+                StoredValueDeserializationError::CouldNotDeserializeContract(reason) => {
+                    write!(
+                        f,
+                        "Could not deserialize StoredValue::Contract. Reason: {reason}"
+                    )
+                }
+            }
+        }
     }
 
     impl TryFrom<HumanReadableDeserHelper> for StoredValue {

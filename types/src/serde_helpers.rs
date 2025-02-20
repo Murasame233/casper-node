@@ -109,15 +109,16 @@ pub(crate) mod deploy_hash_as_array {
 }
 
 pub mod contract {
-    #[cfg(feature = "json-schema")]
-    use schemars::JsonSchema;
-    use serde::{Deserialize, Serialize};
-    use thiserror::Error;
-
+    use super::*;
     use crate::{
         contracts::{ContractPackageHash, EntryPoint, EntryPoints},
         Contract, ContractWasmHash, NamedKeys, ProtocolVersion,
     };
+    use core::fmt::Display;
+    #[cfg(feature = "json-schema")]
+    use schemars::JsonSchema;
+    use serde::{Deserialize, Serialize};
+
     #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
     #[cfg_attr(feature = "json-schema", derive(JsonSchema))]
     #[cfg_attr(feature = "json-schema", schemars(rename = "Contract"))]
@@ -142,11 +143,20 @@ pub mod contract {
     }
 
     /// Parsing error when deserializing StoredValue.
-    #[derive(Debug, Clone, Error)]
+    #[derive(Debug, Clone)]
     pub enum ContractDeserializationError {
         /// Contract not deserializable.
-        #[error("Non unique `entry_points.name`")]
         NonUniqueEntryPointName,
+    }
+
+    impl Display for ContractDeserializationError {
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            match self {
+                ContractDeserializationError::NonUniqueEntryPointName => {
+                    write!(f, "Non unique `entry_points.name`")
+                }
+            }
+        }
     }
 
     impl TryFrom<HumanReadableContract> for Contract {
@@ -161,7 +171,7 @@ pub mod contract {
             } = value;
             let mut entry_points_map = EntryPoints::new();
             for entry_point in entry_points {
-                if let Some(_) = entry_points_map.add_entry_point(entry_point) {
+                if entry_points_map.add_entry_point(entry_point).is_some() {
                     //There were duplicate entries in regards to 'name'
                     return Err(ContractDeserializationError::NonUniqueEntryPointName);
                 }
