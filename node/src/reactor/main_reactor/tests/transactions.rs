@@ -1,6 +1,6 @@
 use super::*;
 use crate::{testing::LARGE_WASM_LANE_ID, types::MetaTransaction};
-use casper_execution_engine::engine_state::MAX_PAYMENT_AMOUNT;
+use casper_execution_engine::engine_state::BASELINE_MOTES;
 use casper_storage::data_access_layer::{
     AddressableEntityRequest, BalanceIdentifier, ProofHandling, QueryRequest, QueryResult,
 };
@@ -3477,7 +3477,7 @@ async fn successful_purse_to_purse_transfer() {
     let mut txn = Transaction::from(
         TransactionV1Builder::new_session(false, module_bytes, TransactionRuntimeParams::VmCasperV1)
             .with_runtime_args(
-                runtime_args! { "destination" => purse_name, "amount" => U512::from(MAX_PAYMENT_AMOUNT) + U512::one() },
+                runtime_args! { "destination" => purse_name, "amount" => *BASELINE_MOTES + U512::one() },
             )
             .with_chain_name(CHAIN_NAME)
             .with_initiator_addr(BOB_PUBLIC_KEY.clone())
@@ -3570,7 +3570,7 @@ async fn successful_purse_to_account_transfer() {
     let mut txn = Transaction::from(
         TransactionV1Builder::new_session(false, module_bytes, TransactionRuntimeParams::VmCasperV1)
             .with_runtime_args(
-                runtime_args! { "destination" => purse_name, "amount" => U512::from(MAX_PAYMENT_AMOUNT) + U512::one() },
+                runtime_args! { "destination" => purse_name, "amount" => *BASELINE_MOTES + U512::one() },
             )
             .with_chain_name(CHAIN_NAME)
             .with_initiator_addr(BOB_PUBLIC_KEY.clone())

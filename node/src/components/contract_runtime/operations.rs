@@ -124,7 +124,7 @@ pub fn execute_finalized_block(
     let insufficient_balance_handling = InsufficientBalanceHandling::HoldRemaining;
     let refund_handling = chainspec.core_config.refund_handling;
     let fee_handling = chainspec.core_config.fee_handling;
-    let penalty_payment_amount = *casper_execution_engine::engine_state::MAX_PAYMENT;
+    let penalty_payment_amount = *casper_execution_engine::engine_state::BASELINE_MOTES;
     let balance_handling = BalanceHandling::Available;
 
     // get scratch state, which must be used for all processing and post-processing data
@@ -665,7 +665,10 @@ pub fn execute_finalized_block(
 
         // handle refunds per the chainspec determined setting.
         let refund_amount = {
-            let consumed = artifact_builder.consumed();
+            let mut consumed = artifact_builder.consumed();
+            if consumed == U512::zero() {
+                consumed = penalty_payment_amount;
+            }
             let refund_mode = match refund_handling {
                 RefundHandling::NoRefund => {
                     if fee_handling.is_no_fee() && is_custom_payment {

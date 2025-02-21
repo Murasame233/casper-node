@@ -34,13 +34,13 @@ pub use wasm_v1::{
 };
 
 /// The maximum amount of motes that payment code execution can cost.
-pub const MAX_PAYMENT_AMOUNT: u64 = 2_500_000_000;
+const BASELINE_MOTES_AMOUNT: u64 = 2_500_000_000;
 /// The maximum amount of gas a payment code can use.
 ///
 /// This value also indicates the minimum balance of the main purse of an account when
 /// executing payment code, as such amount is held as collateral to compensate for
 /// code execution.
-pub static MAX_PAYMENT: Lazy<U512> = Lazy::new(|| U512::from(MAX_PAYMENT_AMOUNT));
+pub static BASELINE_MOTES: Lazy<U512> = Lazy::new(|| U512::from(BASELINE_MOTES_AMOUNT));
 
 /// Gas/motes conversion rate of wasmless transfer cost is always 1 regardless of what user wants to
 /// pay.

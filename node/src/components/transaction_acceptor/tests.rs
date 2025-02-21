@@ -20,7 +20,7 @@ use tempfile::TempDir;
 use thiserror::Error;
 use tokio::time;
 
-use casper_execution_engine::engine_state::MAX_PAYMENT_AMOUNT;
+use casper_execution_engine::engine_state::BASELINE_MOTES;
 use casper_storage::{
     data_access_layer::{
         AddressableEntityResult, BalanceIdentifier, BalanceResult, EntryPointExistsResult,
@@ -39,7 +39,6 @@ use casper_types::{
     InvalidDeploy, InvalidTransaction, InvalidTransactionV1, Key, PricingHandling, PricingMode,
     ProtocolVersion, PublicKey, SecretKey, StoredValue, TestBlockBuilder, TimeDiff, Timestamp,
     Transaction, TransactionArgs, TransactionConfig, TransactionRuntimeParams, TransactionV1, URef,
-    U512,
 };
 
 use super::*;
@@ -938,9 +937,9 @@ impl reactor::Reactor for Reactor {
                         self.test_scenario,
                         TestScenario::FromClientInsufficientBalance(_)
                     ) {
-                        MAX_PAYMENT_AMOUNT - 1
+                        *BASELINE_MOTES - 1
                     } else {
-                        MAX_PAYMENT_AMOUNT
+                        *BASELINE_MOTES
                     };
                     let balance_result =
                         if self.test_scenario == TestScenario::AccountWithUnknownBalance {
@@ -953,7 +952,7 @@ impl reactor::Reactor for Reactor {
                             BalanceResult::Success {
                                 purse_addr,
                                 total_balance: Default::default(),
-                                available_balance: U512::from(motes),
+                                available_balance: motes,
                                 proofs_result,
                             }
                         };
