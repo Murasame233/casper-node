@@ -6,7 +6,6 @@
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     fmt::{self, Display, Formatter},
-    mem,
     sync::Arc,
 };
 
@@ -64,7 +63,7 @@ use crate::{
     utils::Source,
 };
 
-const _STORAGE_REQUEST_SIZE: usize = mem::size_of::<StorageRequest>();
+const _STORAGE_REQUEST_SIZE: usize = size_of::<StorageRequest>();
 const_assert!(_STORAGE_REQUEST_SIZE < 129);
 
 /// A metrics request.
@@ -85,7 +84,7 @@ impl Display for MetricsRequest {
     }
 }
 
-const _NETWORK_EVENT_SIZE: usize = mem::size_of::<NetworkRequest<String>>();
+const _NETWORK_EVENT_SIZE: usize = size_of::<NetworkRequest<String>>();
 const_assert!(_NETWORK_EVENT_SIZE < 105);
 
 /// A networking request.

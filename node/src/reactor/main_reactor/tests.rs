@@ -39,7 +39,7 @@ use casper_storage::{
 };
 use casper_types::{
     bytesrepr::{FromBytes, ToBytes},
-    execution::{ExecutionResult, ExecutionResultV2, TransformKindV2, TransformV2},
+    execution::{ExecutionResult, TransformKindV2, TransformV2},
     system::{
         auction::{BidAddr, BidKind, BidsExt, DelegationRate, DelegatorKind},
         AUCTION,
@@ -760,7 +760,7 @@ impl TestFixture {
                         .read_highest_switch_block_headers(1)
                         .unwrap()
                         .last()
-                        .map_or(false, |header| {
+                        .is_some_and(|header| {
                             header.era_id() == era_id
                                 && available_block_range.contains(header.height())
                         })
@@ -1038,18 +1038,13 @@ impl TestFixture {
             .expect("node 0 should have given execution result")
         {
             ExecutionResult::V1(_) => unreachable!(),
-            ExecutionResult::V2(ExecutionResultV2 {
-                effects,
-                consumed: gas,
-                error_message,
-                ..
-            }) => {
-                if error_message.is_none() {
-                    effects.transforms().to_vec()
+            ExecutionResult::V2(execution_result_v2) => {
+                if execution_result_v2.error_message.is_none() {
+                    execution_result_v2.effects.transforms().to_vec()
                 } else {
                     panic!(
                         "transaction execution failed: {:?} gas: {}",
-                        error_message, gas
+                        execution_result_v2.error_message, execution_result_v2.consumed
                     );
                 }
             }
