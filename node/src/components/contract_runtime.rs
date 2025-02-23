@@ -169,6 +169,7 @@ impl ContractRuntime {
             let executor_config = ExecutorConfigBuilder::default()
                 .with_memory_limit(17)
                 .with_executor_kind(ExecutorKind::Compiled)
+                .with_wasm_config(chainspec.wasm_config.v2().clone())
                 .build()
                 .expect("Should build");
             ExecutorV2::new(executor_config, Arc::clone(&execution_engine_v1))

@@ -17,11 +17,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use casper_storage::data_access_layer::GenesisRequest;
 use casper_types::{
-    account::AccountHash, system::auction::DELEGATION_RATE_DENOMINATOR, AdministratorAccount,
-    CoreConfig, FeeHandling, GenesisAccount, GenesisConfig, GenesisValidator, HostFunction,
-    HostFunctionCostsV1, MessageLimits, Motes, OpcodeCosts, PublicKey, RefundHandling, SecretKey,
-    StorageCosts, WasmConfig, WasmV1Config, DEFAULT_V1_MAX_STACK_HEIGHT,
-    DEFAULT_V1_WASM_MAX_MEMORY, U512,
+    account::AccountHash, system::auction::DELEGATION_RATE_DENOMINATOR, AdministratorAccount, CoreConfig, FeeHandling, GenesisAccount, GenesisConfig, GenesisValidator, HostFunction, HostFunctionCostsV1, MessageLimits, Motes, OpcodeCosts, PublicKey, RefundHandling, SecretKey, StorageCosts, WasmConfig, WasmV1Config, WasmV2Config, DEFAULT_MAX_STACK_HEIGHT, DEFAULT_WASM_MAX_MEMORY, U512
 };
 use tempfile::TempDir;
 
@@ -197,12 +193,13 @@ fn make_wasm_config() -> WasmConfig {
         ..HostFunctionCostsV1::default()
     };
     let wasm_v1_config = WasmV1Config::new(
-        DEFAULT_V1_WASM_MAX_MEMORY,
-        DEFAULT_V1_MAX_STACK_HEIGHT,
+        DEFAULT_WASM_MAX_MEMORY,
+        DEFAULT_MAX_STACK_HEIGHT,
         OpcodeCosts::default(),
         host_functions,
     );
-    WasmConfig::new(MessageLimits::default(), wasm_v1_config)
+    let wasm_v2_config = WasmV2Config::default();
+    WasmConfig::new(MessageLimits::default(), wasm_v1_config, wasm_v2_config)
 }
 
 fn make_private_chain_config(

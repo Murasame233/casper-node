@@ -9,17 +9,10 @@ use casper_engine_test_support::{
     MINIMUM_ACCOUNT_CREATION_BALANCE,
 };
 use casper_types::{
-    runtime_args,
-    system::{
+    runtime_args, system::{
         auction::{self, DelegationRate},
         handle_payment, mint, AUCTION,
-    },
-    AuctionCosts, BrTableCost, ControlFlowCosts, CoreConfig, EraId, Gas, GenesisAccount,
-    GenesisValidator, HandlePaymentCosts, HostFunction, HostFunctionCost, HostFunctionCostsV1,
-    MessageLimits, MintCosts, Motes, OpcodeCosts, ProtocolVersion, PublicKey, RuntimeArgs,
-    SecretKey, StandardPaymentCosts, StorageCosts, SystemConfig, WasmConfig, WasmV1Config,
-    DEFAULT_ADD_BID_COST, DEFAULT_MINIMUM_BID_AMOUNT, DEFAULT_V1_MAX_STACK_HEIGHT,
-    DEFAULT_V1_WASM_MAX_MEMORY, U512,
+    }, AuctionCosts, BrTableCost, ControlFlowCosts, CoreConfig, EraId, Gas, GenesisAccount, GenesisValidator, HandlePaymentCosts, HostFunction, HostFunctionCost, HostFunctionCostsV1, HostFunctionCostsV2, MessageLimits, MintCosts, Motes, OpcodeCosts, ProtocolVersion, PublicKey, RuntimeArgs, SecretKey, StandardPaymentCosts, StorageCosts, SystemConfig, WasmConfig, WasmV1Config, WasmV2Config, DEFAULT_ADD_BID_COST, DEFAULT_MAX_STACK_HEIGHT, DEFAULT_MINIMUM_BID_AMOUNT, DEFAULT_WASM_MAX_MEMORY, U512
 };
 
 use crate::wasm_utils;
@@ -841,12 +834,18 @@ fn should_verify_wasm_add_bid_wasm_cost_is_not_recursive() {
         ..Zero::zero()
     };
     let wasm_v1_config = WasmV1Config::new(
-        DEFAULT_V1_WASM_MAX_MEMORY,
-        DEFAULT_V1_MAX_STACK_HEIGHT,
+        DEFAULT_WASM_MAX_MEMORY,
+        DEFAULT_MAX_STACK_HEIGHT,
         new_opcode_costs,
         new_host_function_costs,
     );
-    let wasm_config = WasmConfig::new(MessageLimits::default(), wasm_v1_config);
+    let wasm_v2_config = WasmV2Config::new(
+        DEFAULT_WASM_MAX_MEMORY,
+        DEFAULT_MAX_STACK_HEIGHT,
+        OpcodeCosts::default(),
+        HostFunctionCostsV2::default()
+    );
+    let wasm_config = WasmConfig::new(MessageLimits::default(), wasm_v1_config, wasm_v2_config);
 
     let new_max_associated_keys = DEFAULT_MAX_ASSOCIATED_KEYS;
     let new_auction_costs = AuctionCosts::default();

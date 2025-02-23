@@ -32,7 +32,7 @@ use casper_storage::{
     TrackingCopy,
 };
 use casper_types::{
-    account::AccountHash, addressable_entity::{ActionThresholds, AssociatedKeys}, bytesrepr, AddressableEntity, AddressableEntityHash, ByteCode, ByteCodeAddr, ByteCodeHash, ByteCodeKind, ContractRuntimeTag, Digest, EntityAddr, EntityKind, Gas, Groups, InitiatorAddr, Key, Package, PackageHash, PackageStatus, Phase, ProtocolVersion, StoredValue, TransactionInvocationTarget, URef, U512
+    account::AccountHash, addressable_entity::{ActionThresholds, AssociatedKeys}, bytesrepr, AddressableEntity, AddressableEntityHash, ByteCode, ByteCodeAddr, ByteCodeHash, ByteCodeKind, ContractRuntimeTag, Digest, EntityAddr, EntityKind, Gas, Groups, InitiatorAddr, Key, Package, PackageHash, PackageStatus, Phase, ProtocolVersion, StoredValue, TransactionInvocationTarget, URef, WasmV2Config, U512
 };
 use either::Either;
 use install::{InstallContractError, InstallContractRequest, InstallContractResult};
@@ -56,6 +56,7 @@ pub enum ExecutorKind {
 pub struct ExecutorConfig {
     memory_limit: u32,
     executor_kind: ExecutorKind,
+    wasm_config: WasmV2Config,
 }
 
 impl ExecutorConfigBuilder {
@@ -68,6 +69,7 @@ impl ExecutorConfigBuilder {
 pub struct ExecutorConfigBuilder {
     memory_limit: Option<u32>,
     executor_kind: Option<ExecutorKind>,
+    wasm_config: Option<WasmV2Config>,
 }
 
 impl ExecutorConfigBuilder {
@@ -83,14 +85,22 @@ impl ExecutorConfigBuilder {
         self
     }
 
+    /// Set the wasm config.
+    pub fn with_wasm_config(mut self, wasm_config: WasmV2Config) -> Self {
+        self.wasm_config = Some(wasm_config);
+        self
+    }
+
     /// Build the `ExecutorConfig`.
     pub fn build(self) -> Result<ExecutorConfig, &'static str> {
         let memory_limit = self.memory_limit.ok_or("Memory limit is not set")?;
         let executor_kind = self.executor_kind.ok_or("Executor kind is not set")?;
+        let wasm_config = self.wasm_config.ok_or("Wasm config is not set")?;
 
         Ok(ExecutorConfig {
             memory_limit,
             executor_kind,
+            wasm_config,
         })
     }
 }
@@ -504,6 +514,7 @@ impl ExecutorV2 {
 
         let context = Context {
             initiator,
+            config: self.config.wasm_config,
             caller: caller_key,
             callee: callee_key,
             transferred_value,

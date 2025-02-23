@@ -12,9 +12,9 @@ use rand::{
 use serde::{Deserialize, Serialize};
 
 /// Default maximum number of pages of the Wasm memory.
-pub const DEFAULT_V1_WASM_MAX_MEMORY: u32 = 64;
+pub const DEFAULT_WASM_MAX_MEMORY: u32 = 64;
 /// Default maximum stack height.
-pub const DEFAULT_V1_MAX_STACK_HEIGHT: u32 = 500;
+pub const DEFAULT_MAX_STACK_HEIGHT: u32 = 500;
 
 /// Configuration of the Wasm execution environment for V1 execution machine.
 ///
@@ -86,8 +86,8 @@ impl WasmV1Config {
 impl Default for WasmV1Config {
     fn default() -> Self {
         Self {
-            max_memory: DEFAULT_V1_WASM_MAX_MEMORY,
-            max_stack_height: DEFAULT_V1_MAX_STACK_HEIGHT,
+            max_memory: DEFAULT_WASM_MAX_MEMORY,
+            max_stack_height: DEFAULT_MAX_STACK_HEIGHT,
             opcode_costs: OpcodeCosts::default(),
             host_function_costs: HostFunctionCostsV1::default(),
         }

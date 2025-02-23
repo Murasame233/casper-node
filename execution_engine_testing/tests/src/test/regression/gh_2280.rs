@@ -6,10 +6,7 @@ use casper_engine_test_support::{
     MINIMUM_ACCOUNT_CREATION_BALANCE,
 };
 use casper_types::{
-    account::AccountHash, runtime_args, system::mint, AddressableEntityHash, EraId, Gas,
-    HostFunction, HostFunctionCost, HostFunctionCostsV1, Key, MintCosts, Motes,
-    ProtocolUpgradeConfig, ProtocolVersion, PublicKey, SecretKey, WasmConfig, WasmV1Config,
-    DEFAULT_V1_MAX_STACK_HEIGHT, DEFAULT_V1_WASM_MAX_MEMORY, U512,
+    account::AccountHash, runtime_args, system::mint, AddressableEntityHash, EraId, Gas, HostFunction, HostFunctionCost, HostFunctionCostsV1, Key, MintCosts, Motes, ProtocolUpgradeConfig, ProtocolVersion, PublicKey, SecretKey, WasmConfig, WasmV1Config, WasmV2Config, DEFAULT_MAX_STACK_HEIGHT, DEFAULT_WASM_MAX_MEMORY, U512
 };
 
 const TRANSFER_TO_ACCOUNT_CONTRACT: &str = "transfer_to_account.wasm";
@@ -667,12 +664,13 @@ fn make_wasm_config(
     old_wasm_config: WasmConfig,
 ) -> WasmConfig {
     let wasm_v1_config = WasmV1Config::new(
-        DEFAULT_V1_WASM_MAX_MEMORY,
-        DEFAULT_V1_MAX_STACK_HEIGHT,
+        DEFAULT_WASM_MAX_MEMORY,
+        DEFAULT_MAX_STACK_HEIGHT,
         old_wasm_config.v1().opcode_costs(),
         new_host_function_costs,
     );
-    WasmConfig::new(old_wasm_config.messages_limits(), wasm_v1_config)
+    let wasm_v2_config = WasmV2Config::default();
+    WasmConfig::new(old_wasm_config.messages_limits(), wasm_v1_config, wasm_v2_config)
 }
 
 fn make_upgrade_request() -> ProtocolUpgradeConfig {

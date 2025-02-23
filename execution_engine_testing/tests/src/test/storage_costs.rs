@@ -13,12 +13,7 @@ use casper_engine_test_support::{
 #[cfg(not(feature = "use-as-wasm"))]
 use casper_types::DEFAULT_ADD_BID_COST;
 use casper_types::{
-    bytesrepr::{Bytes, ToBytes},
-    contracts::{ContractHash, ContractPackage, ContractVersionKey},
-    AddressableEntityHash, BrTableCost, CLValue, ControlFlowCosts, EraId, Gas, Group, Groups,
-    HostFunctionCostsV1, Key, MessageLimits, OpcodeCosts, ProtocolVersion, RuntimeArgs, StorageCosts,
-    StoredValue, URef, WasmConfig, WasmV1Config, DEFAULT_V1_MAX_STACK_HEIGHT,
-    DEFAULT_V1_WASM_MAX_MEMORY, U512,
+    bytesrepr::{Bytes, ToBytes}, contracts::{ContractHash, ContractPackage, ContractVersionKey}, AddressableEntityHash, BrTableCost, CLValue, ControlFlowCosts, EraId, Gas, Group, Groups, HostFunctionCostsV1, HostFunctionCostsV2, Key, MessageLimits, OpcodeCosts, ProtocolVersion, RuntimeArgs, StorageCosts, StoredValue, URef, WasmConfig, WasmV1Config, WasmV2Config, DEFAULT_MAX_STACK_HEIGHT, DEFAULT_WASM_MAX_MEMORY, U512
 };
 #[cfg(not(feature = "use-as-wasm"))]
 use casper_types::{
@@ -94,14 +89,21 @@ const NEW_OPCODE_COSTS: OpcodeCosts = OpcodeCosts {
 };
 
 static NEW_HOST_FUNCTION_COSTS: Lazy<HostFunctionCostsV1> = Lazy::new(HostFunctionCostsV1::zero);
+static NEW_HOST_FUNCTION_COSTS_V2: Lazy<HostFunctionCostsV2> = Lazy::new(HostFunctionCostsV2::zero);
 static NO_COSTS_WASM_CONFIG: Lazy<WasmConfig> = Lazy::new(|| {
     let wasm_v1_config = WasmV1Config::new(
-        DEFAULT_V1_WASM_MAX_MEMORY,
-        DEFAULT_V1_MAX_STACK_HEIGHT,
+        DEFAULT_WASM_MAX_MEMORY,
+        DEFAULT_MAX_STACK_HEIGHT,
         NEW_OPCODE_COSTS,
         *NEW_HOST_FUNCTION_COSTS,
     );
-    WasmConfig::new(MessageLimits::default(), wasm_v1_config)
+    let wasm_v2_config = WasmV2Config::new(
+        DEFAULT_WASM_MAX_MEMORY,
+        DEFAULT_MAX_STACK_HEIGHT,
+        NEW_OPCODE_COSTS,
+        *NEW_HOST_FUNCTION_COSTS_V2,
+    );
+    WasmConfig::new(MessageLimits::default(), wasm_v1_config, wasm_v2_config)
 });
 
 static NEW_PROTOCOL_VERSION: Lazy<ProtocolVersion> = Lazy::new(|| {
