@@ -9,7 +9,7 @@ use std::{
 use bytes::Bytes;
 use casper_execution_engine::{
     engine_state::{
-        BlockInfo, EngineConfig, Error as EngineError, ExecutableItem, ExecutionEngineV1,
+        BlockInfo, Error as EngineError, ExecutableItem, ExecutionEngineV1,
     },
     execution::ExecError,
 };
@@ -32,7 +32,7 @@ use casper_storage::{
     TrackingCopy,
 };
 use casper_types::{
-    account::AccountHash, addressable_entity::{ActionThresholds, AssociatedKeys}, bytesrepr, AddressableEntity, AddressableEntityHash, ByteCode, ByteCodeAddr, ByteCodeHash, ByteCodeKind, ContractRuntimeTag, Digest, EntityAddr, EntityKind, Gas, Groups, InitiatorAddr, Key, Package, PackageHash, PackageStatus, Phase, ProtocolVersion, StorageCosts, StoredValue, TransactionInvocationTarget, URef, U512
+    account::AccountHash, addressable_entity::{ActionThresholds, AssociatedKeys}, bytesrepr, AddressableEntity, AddressableEntityHash, ByteCode, ByteCodeAddr, ByteCodeHash, ByteCodeKind, ContractRuntimeTag, Digest, EntityAddr, EntityKind, Gas, Groups, InitiatorAddr, Key, Package, PackageHash, PackageStatus, Phase, ProtocolVersion, StoredValue, TransactionInvocationTarget, URef, U512
 };
 use either::Either;
 use install::{InstallContractError, InstallContractRequest, InstallContractResult};
@@ -68,7 +68,6 @@ impl ExecutorConfigBuilder {
 pub struct ExecutorConfigBuilder {
     memory_limit: Option<u32>,
     executor_kind: Option<ExecutorKind>,
-    storage_costs: Option<StorageCosts>,
 }
 
 impl ExecutorConfigBuilder {
@@ -101,7 +100,7 @@ pub struct ExecutorV2 {
     config: ExecutorConfig,
     compiled_wasm_engine: Arc<WasmerEngine>,
     execution_stack: Arc<RwLock<VecDeque<ExecutionKind>>>,
-    execution_engine_v1: ExecutionEngineV1,
+    execution_engine_v1: Arc<ExecutionEngineV1>,
 }
 
 impl ExecutorV2 {
@@ -741,7 +740,7 @@ impl ExecutorV2 {
 
 impl ExecutorV2 {
     /// Create a new `ExecutorV2` instance.
-    pub fn new(config: ExecutorConfig, engine_config: EngineConfig) -> Self {
+    pub fn new(config: ExecutorConfig, execution_engine_v1: Arc<ExecutionEngineV1>) -> Self {
         let wasm_engine = match config.executor_kind {
             ExecutorKind::Compiled => WasmerEngine::new(),
         };
@@ -749,9 +748,7 @@ impl ExecutorV2 {
             config,
             compiled_wasm_engine: Arc::new(wasm_engine),
             execution_stack: Default::default(),
-            execution_engine_v1: ExecutionEngineV1::new(engine_config.clone()), /* TODO: Don't
-                                                                                 * use default
-                                                                                 * instance. */
+            execution_engine_v1
         }
     }
 

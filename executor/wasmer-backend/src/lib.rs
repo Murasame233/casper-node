@@ -95,7 +95,6 @@ impl WasmerEngine {
 }
 
 struct WasmerEnv<S: GlobalStateReader, E: Executor> {
-    config: Config,
     context: Context<S, E>,
     instance: Weak<Instance>,
     bytecode: Bytes,
@@ -155,6 +154,7 @@ impl<'a, S: GlobalStateReader + 'static, E: Executor + 'static> Caller for Wasme
     fn context(&self) -> &Context<S, E> {
         &self.env.data().context
     }
+
     fn context_mut(&mut self) -> &mut Context<S, E> {
         &mut self.env.data_mut().context
     }
@@ -185,10 +185,6 @@ impl<'a, S: GlobalStateReader + 'static, E: Executor + 'static> Caller for Wasme
             .call(&mut store.as_store_mut(), size.try_into().unwrap(), ctx)
             .map_err(handle_wasmer_runtime_error)?;
         Ok(ptr)
-    }
-
-    fn config(&self) -> &Config {
-        &self.env.data().config
     }
 
     fn bytecode(&self) -> Bytes {
@@ -237,13 +233,11 @@ impl<S: GlobalStateReader, E: Executor> WasmerEnv<S, E> {}
 
 impl<S: GlobalStateReader, E: Executor> WasmerEnv<S, E> {
     fn new(
-        config: Config,
         context: Context<S, E>,
         code: Bytes,
         interface_version: InterfaceVersion,
     ) -> Self {
         Self {
-            config,
             context,
             instance: Weak::new(),
             exported_runtime: None,
@@ -327,7 +321,6 @@ where
         let mut store = Store::new(engine);
 
         let wasmer_env = WasmerEnv::new(
-            config.clone(),
             context,
             wasm_bytes,
             InterfaceVersion::from(1u32),
@@ -761,6 +754,7 @@ where
             initiator: data.context.initiator,
             caller: data.context.caller,
             callee: data.context.callee,
+            config: data.context.config,
             transferred_value: data.context.transferred_value,
             tracking_copy: data.context.tracking_copy.fork2(),
             executor: data.context.executor.clone(),

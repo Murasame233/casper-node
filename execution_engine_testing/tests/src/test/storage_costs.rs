@@ -16,7 +16,7 @@ use casper_types::{
     bytesrepr::{Bytes, ToBytes},
     contracts::{ContractHash, ContractPackage, ContractVersionKey},
     AddressableEntityHash, BrTableCost, CLValue, ControlFlowCosts, EraId, Gas, Group, Groups,
-    HostFunctionCosts, Key, MessageLimits, OpcodeCosts, ProtocolVersion, RuntimeArgs, StorageCosts,
+    HostFunctionCostsV1, Key, MessageLimits, OpcodeCosts, ProtocolVersion, RuntimeArgs, StorageCosts,
     StoredValue, URef, WasmConfig, WasmV1Config, DEFAULT_V1_MAX_STACK_HEIGHT,
     DEFAULT_V1_WASM_MAX_MEMORY, U512,
 };
@@ -93,7 +93,7 @@ const NEW_OPCODE_COSTS: OpcodeCosts = OpcodeCosts {
     sign: 0,
 };
 
-static NEW_HOST_FUNCTION_COSTS: Lazy<HostFunctionCosts> = Lazy::new(HostFunctionCosts::zero);
+static NEW_HOST_FUNCTION_COSTS: Lazy<HostFunctionCostsV1> = Lazy::new(HostFunctionCostsV1::zero);
 static NO_COSTS_WASM_CONFIG: Lazy<WasmConfig> = Lazy::new(|| {
     let wasm_v1_config = WasmV1Config::new(
         DEFAULT_V1_WASM_MAX_MEMORY,

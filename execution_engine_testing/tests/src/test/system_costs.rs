@@ -15,7 +15,7 @@ use casper_types::{
         handle_payment, mint, AUCTION,
     },
     AuctionCosts, BrTableCost, ControlFlowCosts, CoreConfig, EraId, Gas, GenesisAccount,
-    GenesisValidator, HandlePaymentCosts, HostFunction, HostFunctionCost, HostFunctionCosts,
+    GenesisValidator, HandlePaymentCosts, HostFunction, HostFunctionCost, HostFunctionCostsV1,
     MessageLimits, MintCosts, Motes, OpcodeCosts, ProtocolVersion, PublicKey, RuntimeArgs,
     SecretKey, StandardPaymentCosts, StorageCosts, SystemConfig, WasmConfig, WasmV1Config,
     DEFAULT_ADD_BID_COST, DEFAULT_MINIMUM_BID_AMOUNT, DEFAULT_V1_MAX_STACK_HEIGHT,
@@ -836,7 +836,7 @@ fn should_verify_wasm_add_bid_wasm_cost_is_not_recursive() {
     // We're elevating cost of `transfer_from_purse_to_purse` while zeroing others.
     // This will verify that user pays for the transfer host function _only_ while host does not
     // additionally charge for calling mint's "transfer" entrypoint under the hood.
-    let new_host_function_costs = HostFunctionCosts {
+    let new_host_function_costs = HostFunctionCostsV1 {
         call_contract: HostFunction::fixed(UPDATED_CALL_CONTRACT_COST),
         ..Zero::zero()
     };

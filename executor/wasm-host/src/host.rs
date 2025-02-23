@@ -55,12 +55,13 @@ pub fn casper_write<S: GlobalStateReader, E: Executor>(
     value_ptr: u32,
     value_size: u32,
 ) -> VMResult<i32> {
-    let write_cost = caller.config().host_function_costs().write;
+    let write_cost = caller.context().config.host_function_costs().write;
     caller.charge_host_function_call(&write_cost, [
+        key_space as u32,
         key_ptr,
         key_size,
         value_ptr,
-        value_size
+        value_size,
     ]);
 
     let keyspace_tag = match KeyspaceTag::from_u64(key_space) {
@@ -157,7 +158,7 @@ pub fn casper_print<S: GlobalStateReader, E: Executor>(
     message_ptr: u32,
     message_size: u32,
 ) -> VMResult<()> {
-    let print_cost = caller.config().host_function_costs().print;
+    let print_cost = caller.context().config.host_function_costs().print;
     caller.charge_host_function_call(&print_cost, [message_ptr, message_size]);
 
     let vec = caller.memory_read(message_ptr, message_size.try_into().unwrap())?;
@@ -176,8 +177,15 @@ pub fn casper_read<S: GlobalStateReader, E: Executor>(
     cb_alloc: u32,
     alloc_ctx: u32,
 ) -> Result<i32, VMError> {
-    let read_cost = caller.config().host_function_costs().read_value;
-    caller.charge_host_function_call(&read_cost, [key_ptr, key_size, u32::max(cb_alloc, alloc_ctx)]);
+    let read_cost = caller.context().config.host_function_costs().read;
+    caller.charge_host_function_call(&read_cost, [
+        key_tag as u32,
+        key_ptr,
+        key_size,
+        info_ptr,
+        cb_alloc,
+        alloc_ctx,
+    ]);
 
     let keyspace_tag = match KeyspaceTag::from_u64(key_tag) {
         Some(keyspace_tag) => keyspace_tag,
@@ -331,8 +339,8 @@ pub fn casper_copy_input<S: GlobalStateReader, E: Executor>(
         alloc_ctx
     };
 
-    let copy_cost = caller.config().host_function_costs().random_bytes;
-    caller.charge_host_function_call(&copy_cost, [out_ptr, input.len() as u32]);
+    let copy_input_cost = caller.context().config.host_function_costs().copy_input;
+    caller.charge_host_function_call(&copy_input_cost, [out_ptr, input.len() as u32]);
 
     if out_ptr == 0 {
         Ok(out_ptr)
@@ -349,7 +357,7 @@ pub fn casper_return<S: GlobalStateReader, E: Executor>(
     data_ptr: u32,
     data_len: u32,
 ) -> VMResult<()> {
-    let ret_cost = caller.config().host_function_costs().ret;
+    let ret_cost = caller.context().config.host_function_costs().ret;
     caller.charge_host_function_call(&ret_cost, [data_ptr, data_len]);
 
     let flags = ReturnFlags::from_bits_retain(flags);
@@ -378,7 +386,19 @@ pub fn casper_create<S: GlobalStateReader + 'static, E: Executor + 'static>(
     seed_len: u32,
     result_ptr: u32,
 ) -> VMResult<HostResult> {
-    // TODO: Add a cost for this
+    let create_cost = caller.context().config.host_function_costs().create;
+    caller.charge_host_function_call(&create_cost, [
+        code_ptr,
+        code_len,
+        value_ptr,
+        entry_point_ptr,
+        entry_point_len,
+        input_ptr,
+        input_len,
+        seed_ptr,
+        seed_len,
+        result_ptr,
+    ]);
 
     let code = if code_ptr != 0 {
         caller
@@ -635,18 +655,18 @@ pub fn casper_call<S: GlobalStateReader + 'static, E: Executor + 'static>(
     cb_alloc: u32,
     cb_ctx: u32,
 ) -> VMResult<HostResult> {
-    let call_cost = caller.config().host_function_costs().call_versioned_contract;
+    let call_cost = caller.context().config.host_function_costs().call;
     caller.charge_host_function_call(
         &call_cost, [
             address_ptr,
             address_len,
             value_ptr,
-            0,
             entry_point_ptr,
             entry_point_len,
             input_ptr,
             input_len,
-            0,
+            cb_alloc,
+            cb_ctx,
         ]
     );
 
@@ -778,8 +798,8 @@ pub fn casper_env_caller<S: GlobalStateReader, E: Executor>(
     dest_len: u32,
     entity_kind_ptr: u32,
 ) -> VMResult<u32> {
-    let caller_cost = caller.config().host_function_costs().get_caller;
-    caller.charge_host_function_call(&caller_cost, [dest_len]);
+    let caller_cost = caller.context().config.host_function_costs().env_caller;
+    caller.charge_host_function_call(&caller_cost, [dest_ptr, dest_len, entity_kind_ptr]);
 
     // TODO: Decide whether we want to return the full address and entity kind or just the 32 bytes
     // "unified".
@@ -802,10 +822,11 @@ pub fn casper_env_caller<S: GlobalStateReader, E: Executor>(
 }
 
 pub fn casper_env_transferred_value<S: GlobalStateReader, E: Executor>(
-    caller: impl Caller<Context = Context<S, E>>,
+    mut caller: impl Caller<Context = Context<S, E>>,
     output: u32,
 ) -> Result<(), VMError> {
-    // TODO: Add cost for this
+    let transferred_value_cost = caller.context().config.host_function_costs().env_transferred_value;
+    caller.charge_host_function_call(&transferred_value_cost, [output]);
 
     let result = caller.context().transferred_value;
     caller.memory_write(output, &result.to_le_bytes())?;
@@ -819,8 +840,13 @@ pub fn casper_env_balance<S: GlobalStateReader, E: Executor>(
     entity_addr_len: u32,
     output_ptr: u32,
 ) -> VMResult<u32> {
-    let balance_cost = caller.config().host_function_costs().get_balance;
-    caller.charge_host_function_call(&balance_cost, [entity_addr_ptr, entity_addr_len, output_ptr]);
+    let balance_cost = caller.context().config.host_function_costs().env_balance;
+    caller.charge_host_function_call(&balance_cost, [
+        entity_kind,
+        entity_addr_ptr,
+        entity_addr_len,
+        output_ptr
+    ]);
 
     let entity_key = match EntityKindTag::from_u32(entity_kind) {
         Some(EntityKindTag::Account) => {
@@ -935,15 +961,11 @@ pub fn casper_transfer<S: GlobalStateReader + 'static, E: Executor>(
     entity_addr_len: u32,
     amount_ptr: u32,
 ) -> VMResult<u32> {
-    let transfer_cost = caller.config().host_function_costs().transfer_to_account;
+    let transfer_cost = caller.context().config.host_function_costs().transfer;
     caller.charge_host_function_call(&transfer_cost, [
         entity_addr_ptr,
         entity_addr_len,
         amount_ptr,
-        4,
-        0,
-        0,
-        0
     ]);
 
     if entity_addr_len != 32 {
@@ -1094,7 +1116,15 @@ pub fn casper_upgrade<S: GlobalStateReader + 'static, E: Executor>(
     input_ptr: u32,
     input_size: u32,
 ) -> VMResult<HostResult> {
-    // TODO: add cost for this
+    let upgrade_cost = caller.context().config.host_function_costs().upgrade;
+    caller.charge_host_function_call(&upgrade_cost, [
+        code_ptr,
+        code_size,
+        entry_point_ptr,
+        entry_point_size,
+        input_ptr,
+        input_size,
+    ]);
 
     let code = caller
         .memory_read(code_ptr, code_size as usize)
@@ -1282,11 +1312,13 @@ pub fn casper_upgrade<S: GlobalStateReader + 'static, E: Executor>(
     Ok(Ok(()))
 }
 
+// TODO: Should this be blocktime instead of block_time? [Consistency]
+// If addressed, make sure to fix this in chainspec too
 pub fn casper_env_block_time<S: GlobalStateReader, E: Executor>(
     mut caller: impl Caller<Context = Context<S, E>>,
 ) -> VMResult<u64> {
-    let blocktime_cost = caller.config().host_function_costs().get_blocktime;
-    caller.charge_host_function_call(&blocktime_cost, [0]);
+    let block_time_cost = caller.context().config.host_function_costs().env_block_time;
+    caller.charge_host_function_call(&block_time_cost, []);
 
     let block_time = caller.context().block_time;
     Ok(block_time.value())

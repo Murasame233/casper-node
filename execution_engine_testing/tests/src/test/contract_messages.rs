@@ -13,7 +13,7 @@ use casper_types::{
     bytesrepr::ToBytes,
     contract_messages::{MessageChecksum, MessagePayload, MessageTopicSummary, TopicNameHash},
     runtime_args, AddressableEntityHash, BlockGlobalAddr, BlockTime, CLValue, CoreConfig, Digest,
-    HostFunction, HostFunctionCosts, Key, MessageLimits, OpcodeCosts, RuntimeArgs, StorageCosts,
+    HostFunction, HostFunctionCostsV1, Key, MessageLimits, OpcodeCosts, RuntimeArgs, StorageCosts,
     StoredValue, SystemConfig, WasmConfig, WasmV1Config, DEFAULT_V1_MAX_STACK_HEIGHT,
     DEFAULT_V1_WASM_MAX_MEMORY, U512,
 };
@@ -660,7 +660,7 @@ fn should_charge_expected_gas_for_storage() {
             DEFAULT_V1_WASM_MAX_MEMORY,
             DEFAULT_V1_MAX_STACK_HEIGHT,
             OpcodeCosts::zero(),
-            HostFunctionCosts::zero(),
+            HostFunctionCostsV1::zero(),
         );
         let wasm_config = WasmConfig::new(MessageLimits::default(), wasm_v1_config);
         ChainspecConfig {
@@ -772,7 +772,7 @@ fn should_charge_increasing_gas_consumed_for_multiple_messages_emitted() {
             DEFAULT_V1_WASM_MAX_MEMORY,
             DEFAULT_V1_MAX_STACK_HEIGHT,
             OpcodeCosts::zero(),
-            HostFunctionCosts {
+            HostFunctionCostsV1 {
                 emit_message: HostFunction::fixed(FIRST_MESSAGE_EMIT_COST),
                 cost_increase_per_message: COST_INCREASE_PER_MESSAGE,
                 ..Zero::zero()
@@ -1140,7 +1140,7 @@ fn emit_message_should_consume_variable_gas_based_on_topic_and_message_size() {
             DEFAULT_V1_WASM_MAX_MEMORY,
             DEFAULT_V1_MAX_STACK_HEIGHT,
             OpcodeCosts::zero(),
-            HostFunctionCosts {
+            HostFunctionCostsV1 {
                 emit_message: HostFunction::new(
                     MESSAGE_EMIT_COST,
                     [

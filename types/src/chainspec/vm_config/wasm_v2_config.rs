@@ -1,6 +1,6 @@
 use crate::{
     bytesrepr::{self, FromBytes, ToBytes},
-    chainspec::vm_config::{HostFunctionCostsV1, OpcodeCosts},
+    chainspec::vm_config::OpcodeCosts,
 };
 #[cfg(feature = "datasize")]
 use datasize::DataSize;
@@ -10,6 +10,8 @@ use rand::{
     Rng,
 };
 use serde::{Deserialize, Serialize};
+
+use super::HostFunctionCostsV2;
 
 /// Default maximum number of pages of the Wasm memory.
 pub const DEFAULT_V1_WASM_MAX_MEMORY: u32 = 64;
@@ -23,7 +25,7 @@ pub const DEFAULT_V1_MAX_STACK_HEIGHT: u32 = 500;
 #[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Debug)]
 #[cfg_attr(feature = "datasize", derive(DataSize))]
 #[serde(deny_unknown_fields)]
-pub struct WasmV1Config {
+pub struct WasmV2Config {
     /// Maximum amount of heap memory (represented in 64kB pages) each contract can use.
     max_memory: u32,
     /// Max stack height (native WebAssembly stack limiter).
@@ -31,18 +33,18 @@ pub struct WasmV1Config {
     /// Wasm opcode costs table.
     opcode_costs: OpcodeCosts,
     /// Host function costs table.
-    host_function_costs: HostFunctionCostsV1,
+    host_function_costs: HostFunctionCostsV2,
 }
 
-impl WasmV1Config {
+impl WasmV2Config {
     /// ctor
     pub fn new(
         max_memory: u32,
         max_stack_height: u32,
         opcode_costs: OpcodeCosts,
-        host_function_costs: HostFunctionCostsV1,
+        host_function_costs: HostFunctionCostsV2,
     ) -> Self {
-        WasmV1Config {
+        WasmV2Config {
             max_memory,
             max_stack_height,
             opcode_costs,
@@ -55,8 +57,13 @@ impl WasmV1Config {
         self.opcode_costs
     }
 
+    /// Returns a reference to host function costs
+    pub fn host_function_costs(&self) -> &HostFunctionCostsV2 {
+        &self.host_function_costs
+    }
+
     /// Returns host function costs and consumes this object.
-    pub fn take_host_function_costs(self) -> HostFunctionCostsV1 {
+    pub fn take_host_function_costs(self) -> HostFunctionCostsV2 {
         self.host_function_costs
     }
 
@@ -83,18 +90,18 @@ impl WasmV1Config {
     }
 }
 
-impl Default for WasmV1Config {
+impl Default for WasmV2Config {
     fn default() -> Self {
         Self {
             max_memory: DEFAULT_V1_WASM_MAX_MEMORY,
             max_stack_height: DEFAULT_V1_MAX_STACK_HEIGHT,
             opcode_costs: OpcodeCosts::default(),
-            host_function_costs: HostFunctionCostsV1::default(),
+            host_function_costs: HostFunctionCostsV2::default(),
         }
     }
 }
 
-impl ToBytes for WasmV1Config {
+impl ToBytes for WasmV2Config {
     fn to_bytes(&self) -> Result<Vec<u8>, bytesrepr::Error> {
         let mut ret = bytesrepr::unchecked_allocate_buffer(self);
         ret.append(&mut self.max_memory.to_bytes()?);
@@ -112,14 +119,14 @@ impl ToBytes for WasmV1Config {
     }
 }
 
-impl FromBytes for WasmV1Config {
+impl FromBytes for WasmV2Config {
     fn from_bytes(bytes: &[u8]) -> Result<(Self, &[u8]), bytesrepr::Error> {
         let (max_memory, rem) = FromBytes::from_bytes(bytes)?;
         let (max_stack_height, rem) = FromBytes::from_bytes(rem)?;
         let (opcode_costs, rem) = FromBytes::from_bytes(rem)?;
         let (host_function_costs, rem) = FromBytes::from_bytes(rem)?;
         Ok((
-            WasmV1Config {
+            WasmV2Config {
                 max_memory,
                 max_stack_height,
                 opcode_costs,
@@ -131,9 +138,9 @@ impl FromBytes for WasmV1Config {
 }
 
 #[cfg(any(feature = "testing", test))]
-impl Distribution<WasmV1Config> for Standard {
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> WasmV1Config {
-        WasmV1Config {
+impl Distribution<WasmV2Config> for Standard {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> WasmV2Config {
+        WasmV2Config {
             max_memory: rng.gen(),
             max_stack_height: rng.gen(),
             opcode_costs: rng.gen(),
@@ -147,23 +154,22 @@ impl Distribution<WasmV1Config> for Standard {
 pub mod gens {
     use crate::{
         chainspec::vm_config::{
-            host_function_costs::gens::host_function_costs_arb,
-            opcode_costs::gens::opcode_costs_arb,
+            host_function_costs_v2::gens::host_function_costs_v2_arb, opcode_costs::gens::opcode_costs_arb
         },
         gens::example_u32_arb,
     };
     use proptest::prop_compose;
 
-    use super::WasmV1Config;
+    use super::WasmV2Config;
 
     prop_compose! {
-        pub fn wasm_v1_config_arb() (
+        pub fn wasm_v2_config_arb() (
             max_memory in example_u32_arb(),
             max_stack_height in example_u32_arb(),
             opcode_costs in opcode_costs_arb(),
-            host_function_costs in host_function_costs_arb(),
-        ) -> WasmV1Config {
-            WasmV1Config {
+            host_function_costs in host_function_costs_v2_arb(),
+        ) -> WasmV2Config {
+            WasmV2Config {
                 max_memory,
                 max_stack_height,
                 opcode_costs,

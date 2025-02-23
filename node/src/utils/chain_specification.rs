@@ -194,7 +194,7 @@ mod tests {
 
     use casper_types::{
         bytesrepr::FromBytes, ActivationPoint, BrTableCost, ChainspecRawBytes, ControlFlowCosts,
-        CoreConfig, EraId, GlobalStateUpdate, HighwayConfig, HostFunction, HostFunctionCosts,
+        CoreConfig, EraId, GlobalStateUpdate, HighwayConfig, HostFunction, HostFunctionCostsV1,
         MessageLimits, Motes, OpcodeCosts, ProtocolConfig, ProtocolVersion, StoredValue,
         TestBlockBuilder, TimeDiff, Timestamp, TransactionConfig, TransactionLaneDefinition,
         TransactionV1Config, WasmConfig, WasmV1Config, MINT_LANE_ID,
@@ -242,8 +242,8 @@ mod tests {
         grow_memory: 27,
         sign: 28,
     };
-    static EXPECTED_GENESIS_HOST_FUNCTION_COSTS: Lazy<HostFunctionCosts> =
-        Lazy::new(|| HostFunctionCosts {
+    static EXPECTED_GENESIS_HOST_FUNCTION_COSTS: Lazy<HostFunctionCostsV1> =
+        Lazy::new(|| HostFunctionCostsV1 {
             read_value: HostFunction::new(127, [0, 1, 0]),
             dictionary_get: HostFunction::new(128, [0, 1, 0]),
             write: HostFunction::new(140, [0, 1, 0, 2]),
