@@ -58,8 +58,8 @@ use crate::{
     reactor::main_reactor::ReactorState,
     types::{
         appendable_block::AppendableBlock, BlockExecutionResultsOrChunk,
-        BlockExecutionResultsOrChunkId, BlockWithMetadata, ExecutableBlock, LegacyDeploy,
-        MetaBlockState, NodeId, StatusFeed, TransactionHeader,
+        BlockExecutionResultsOrChunkId, BlockWithMetadata, ExecutableBlock, InvalidProposalError,
+        LegacyDeploy, MetaBlockState, NodeId, StatusFeed, TransactionHeader,
     },
     utils::Source,
 };
@@ -309,12 +309,12 @@ pub(crate) enum StorageRequest {
         /// in local storage.
         responder: Responder<Option<ApprovalsHashes>>,
     },
-    /// Retrieve highest complete block.
+    /// Retrieve the highest complete block.
     GetHighestCompleteBlock {
         /// Responder.
         responder: Responder<Option<Block>>,
     },
-    /// Retrieve highest complete block header.
+    /// Retrieve the highest complete block header.
     GetHighestCompleteBlockHeader {
         /// Responder.
         responder: Responder<Option<BlockHeader>>,
@@ -986,7 +986,7 @@ impl Display for ContractRuntimeRequest {
             ContractRuntimeRequest::UpdatePreState { new_pre_state } => {
                 write!(
                     formatter,
-                    "Updating contract runtimes execution presate: {:?}",
+                    "Updating contract runtimes execution prestate: {:?}",
                     new_pre_state
                 )
             }
@@ -1063,8 +1063,8 @@ pub(crate) struct BlockValidationRequest {
     pub(crate) sender: NodeId,
     /// Responder to call with the result.
     ///
-    /// Indicates whether or not validation was successful.
-    pub(crate) responder: Responder<bool>,
+    /// Indicates whether validation was successful.
+    pub(crate) responder: Responder<Result<(), Box<InvalidProposalError>>>,
 }
 
 impl Display for BlockValidationRequest {
