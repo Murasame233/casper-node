@@ -285,7 +285,7 @@ impl TestFixture {
                 stakes.into_iter().map(|stake| stake.into()).collect()
             }
             InitialStakes::Random { count } => {
-                // By default we use very large stakes so we would catch overflow issues.
+                // By default, we use very large stakes so we would catch overflow issues.
                 iter::from_fn(|| Some(U512::from(rng.gen_range(100..999)) * U512::from(u128::MAX)))
                     .take(count)
                     .collect()
@@ -2116,7 +2116,7 @@ async fn run_withdraw_bid_network() {
     // The bid record should have been pruned once unbonding ran.
     fixture.check_bid_existence_at_tip(&alice_public_key, None, false);
 
-    // Crank the network forward until the unbonds are processed.
+    // Crank the network forward until the unbonding queue is processed.
     fixture
         .run_until_stored_switch_block_header(
             ERA_ONE.saturating_add(unbonding_delay + 1),
@@ -2321,7 +2321,7 @@ async fn run_undelegate_bid_network() {
     fixture.check_bid_existence_at_tip(&bob_public_key, None, true);
     fixture.check_bid_existence_at_tip(&bob_public_key, Some(&alice_public_key), false);
 
-    // Crank the network forward until the unbonds are processed.
+    // Crank the network forward until the unbonding queue is processed.
     fixture
         .run_until_stored_switch_block_header(
             ERA_ONE.saturating_add(unbonding_delay + 1),
