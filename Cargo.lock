@@ -6694,6 +6694,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "vm2-host"
+version = "0.1.0"
+dependencies = [
+ "casper-macros",
+ "casper-sdk",
+]
+
+[[package]]
 name = "vm2-legacy-counter-proxy"
 version = "0.1.0"
 dependencies = [
