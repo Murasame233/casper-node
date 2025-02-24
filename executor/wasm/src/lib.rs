@@ -530,8 +530,6 @@ impl ExecutorV2 {
         let wasm_instance_config = ConfigBuilder::new()
             .with_gas_limit(gas_limit)
             .with_memory_limit(self.config.memory_limit)
-            // TODO: this is stolen from the v1 config, ideally, we'd have a VM2 section in chainspec
-            .with_host_function_costs(self.execution_engine_v1.config().wasm_config().v1().take_host_function_costs())
             .build();
 
         let mut instance = vm.instantiate(wasm_bytes, context, wasm_instance_config)?;

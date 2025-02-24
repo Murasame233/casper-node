@@ -176,7 +176,6 @@ pub type VMResult<T> = Result<T, VMError>;
 pub struct Config {
     gas_limit: u64,
     memory_limit: u32,
-    host_function_costs: HostFunctionCostsV1
 }
 
 impl Config {
@@ -187,10 +186,6 @@ impl Config {
     pub fn memory_limit(&self) -> u32 {
         self.memory_limit
     }
-
-    pub fn host_function_costs(&self) -> HostFunctionCostsV1 {
-        self.host_function_costs
-    }
 }
 
 /// Configuration for the Wasm engine.
@@ -199,7 +194,6 @@ pub struct ConfigBuilder {
     gas_limit: Option<u64>,
     /// Memory limit in pages.
     memory_limit: Option<u32>,
-    host_function_costs: Option<HostFunctionCostsV1>,
 }
 
 impl ConfigBuilder {
@@ -220,21 +214,13 @@ impl ConfigBuilder {
         self
     }
 
-    /// Host function costs
-    pub fn with_host_function_costs(mut self, host_function_costs: HostFunctionCostsV1) -> Self {
-        self.host_function_costs = Some(host_function_costs);
-        self
-    }
-
     /// Build the configuration.
     pub fn build(self) -> Config {
         let gas_limit = self.gas_limit.expect("Required field missing: gas_limit");
         let memory_limit = self.memory_limit.expect("Required field missing: memory_limit");
-        let host_function_costs = self.host_function_costs.expect("Required field missing: host_function_costs");
         Config {
             gas_limit,
             memory_limit,
-            host_function_costs,
         }
     }
 }
