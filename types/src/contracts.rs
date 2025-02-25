@@ -992,7 +992,11 @@ impl From<ContractPackage> for Package {
 /// referenced by index as well as name.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "datasize", derive(DataSize))]
-#[cfg_attr(feature = "json-schema", derive(JsonSchema))]
+#[cfg_attr(
+    feature = "json-schema",
+    derive(JsonSchema),
+    schemars(with = "serde_helpers::entry_point::HumanReadableEntryPoint")
+)]
 pub struct EntryPoint {
     name: String,
     args: Parameters,
@@ -1127,7 +1131,6 @@ impl FromBytes for EntryPoint {
 /// Collection of named entry points.
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Debug)]
 #[cfg_attr(feature = "datasize", derive(DataSize))]
-#[cfg_attr(feature = "json-schema", derive(JsonSchema))]
 #[serde(transparent, deny_unknown_fields)]
 pub struct EntryPoints(BTreeMap<String, EntryPoint>);
 
@@ -1277,15 +1280,15 @@ impl From<EntryPoints> for EntityEntryPoints {
 /// Methods and type signatures supported by a contract.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "datasize", derive(DataSize))]
-#[cfg_attr(
-    feature = "json-schema",
-    derive(JsonSchema),
-    schemars(with = "serde_helpers::contract::HumanReadableContract")
-)]
+#[cfg_attr(feature = "json-schema", derive(JsonSchema))]
 pub struct Contract {
     contract_package_hash: ContractPackageHash,
     contract_wasm_hash: ContractWasmHash,
     named_keys: NamedKeys,
+    #[cfg_attr(
+        feature = "json-schema",
+        schemars(with = "Vec<crate::serde_helpers::entry_point::HumanReadableEntryPoint>")
+    )]
     entry_points: EntryPoints,
     protocol_version: ProtocolVersion,
 }

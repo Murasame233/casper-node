@@ -108,10 +108,106 @@ pub(crate) mod deploy_hash_as_array {
     }
 }
 
-pub mod contract {
+pub(crate) mod entry_point {
     use super::*;
+    #[cfg(feature = "json-schema")]
+    use schemars::JsonSchema;
+    use serde::{Deserialize, Serialize};
+
+    use crate::{contracts::EntryPoint, CLType, EntryPointAccess, EntryPointType, Parameters};
+
+    /*
+    This type exists to provide retro-compat for json representation of [`EntryPointType`] enum.
+    The variants of this enum changed names in 2.x, but it also existed in 1.x. So for
+    [`contract::EntryPoint`] we want to still json-serialize the variants as in 1.x.
+     */
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+    #[cfg_attr(feature = "json-schema", derive(JsonSchema))]
+    #[cfg_attr(
+        feature = "json-schema",
+        schemars(
+            rename = "EntryPointType",
+            description = "Type signature of a contract method."
+        )
+    )]
+    pub(crate) enum HumanReadableEntryPointType {
+        /// Runs as session code
+        Session,
+        /// Runs within contract's context
+        Contract,
+        /// Entry point type that installs
+        /// wasm as new contracts. Runs using
+        /// the called entity's context.
+        Factory,
+    }
+
+    impl From<EntryPointType> for HumanReadableEntryPointType {
+        fn from(value: EntryPointType) -> Self {
+            match value {
+                EntryPointType::Caller => HumanReadableEntryPointType::Session,
+                EntryPointType::Called => HumanReadableEntryPointType::Contract,
+                EntryPointType::Factory => HumanReadableEntryPointType::Factory,
+            }
+        }
+    }
+
+    impl From<HumanReadableEntryPointType> for EntryPointType {
+        fn from(value: HumanReadableEntryPointType) -> Self {
+            match value {
+                HumanReadableEntryPointType::Session => EntryPointType::Caller,
+                HumanReadableEntryPointType::Contract => EntryPointType::Called,
+                HumanReadableEntryPointType::Factory => EntryPointType::Factory,
+            }
+        }
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+    #[cfg_attr(feature = "json-schema", derive(JsonSchema))]
+    #[cfg_attr(
+        feature = "json-schema",
+        schemars(
+            rename = "EntryPoint",
+            description = "Type signature of a contract method."
+        )
+    )]
+    pub(crate) struct HumanReadableEntryPoint {
+        name: String,
+        args: Parameters,
+        ret: CLType,
+        access: EntryPointAccess,
+        entry_point_type: HumanReadableEntryPointType,
+    }
+
+    impl From<&EntryPoint> for HumanReadableEntryPoint {
+        fn from(value: &EntryPoint) -> Self {
+            Self {
+                name: String::from(value.name()),
+                args: value.args().to_vec(),
+                ret: value.ret().clone(),
+                access: value.access().clone(),
+                entry_point_type: value.entry_point_type().into(),
+            }
+        }
+    }
+
+    impl From<HumanReadableEntryPoint> for EntryPoint {
+        fn from(value: HumanReadableEntryPoint) -> Self {
+            let HumanReadableEntryPoint {
+                name,
+                args,
+                ret,
+                access,
+                entry_point_type,
+            } = value;
+            EntryPoint::new(name, args, ret, access, entry_point_type.into())
+        }
+    }
+}
+
+pub(crate) mod contract {
+    use super::{entry_point::HumanReadableEntryPoint, *};
     use crate::{
-        contracts::{ContractPackageHash, EntryPoint, EntryPoints},
+        contracts::{ContractPackageHash, EntryPoints},
         Contract, ContractWasmHash, NamedKeys, ProtocolVersion,
     };
     use core::fmt::Display;
@@ -121,13 +217,19 @@ pub mod contract {
 
     #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
     #[cfg_attr(feature = "json-schema", derive(JsonSchema))]
-    #[cfg_attr(feature = "json-schema", schemars(rename = "Contract"))]
-    pub struct HumanReadableContract {
-        pub(crate) contract_package_hash: ContractPackageHash,
-        pub(crate) contract_wasm_hash: ContractWasmHash,
-        pub(crate) named_keys: NamedKeys,
-        pub(crate) entry_points: Vec<EntryPoint>,
-        pub(crate) protocol_version: ProtocolVersion,
+    #[cfg_attr(
+        feature = "json-schema",
+        schemars(
+            rename = "Contract",
+            description = "Methods and type signatures supported by a contract.",
+        )
+    )]
+    pub(crate) struct HumanReadableContract {
+        contract_package_hash: ContractPackageHash,
+        contract_wasm_hash: ContractWasmHash,
+        named_keys: NamedKeys,
+        entry_points: Vec<HumanReadableEntryPoint>,
+        protocol_version: ProtocolVersion,
     }
 
     impl From<&Contract> for HumanReadableContract {
@@ -137,14 +239,20 @@ pub mod contract {
                 contract_wasm_hash: value.contract_wasm_hash(),
                 named_keys: value.named_keys().clone(),
                 protocol_version: value.protocol_version(),
-                entry_points: value.entry_points().clone().take_entry_points(),
+                entry_points: value
+                    .entry_points()
+                    .clone()
+                    .take_entry_points()
+                    .iter()
+                    .map(Into::into)
+                    .collect(),
             }
         }
     }
 
     /// Parsing error when deserializing StoredValue.
     #[derive(Debug, Clone)]
-    pub enum ContractDeserializationError {
+    pub(crate) enum ContractDeserializationError {
         /// Contract not deserializable.
         NonUniqueEntryPointName,
     }
@@ -171,7 +279,10 @@ pub mod contract {
             } = value;
             let mut entry_points_map = EntryPoints::new();
             for entry_point in entry_points {
-                if entry_points_map.add_entry_point(entry_point).is_some() {
+                if entry_points_map
+                    .add_entry_point(entry_point.into())
+                    .is_some()
+                {
                     //There were duplicate entries in regards to 'name'
                     return Err(ContractDeserializationError::NonUniqueEntryPointName);
                 }
@@ -188,7 +299,7 @@ pub mod contract {
     }
 }
 
-pub mod contract_package {
+pub(crate) mod contract_package {
     use core::convert::TryFrom;
 
     use super::*;
@@ -207,7 +318,7 @@ pub mod contract_package {
     #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
     #[cfg_attr(feature = "json-schema", derive(JsonSchema))]
     #[cfg_attr(feature = "json-schema", schemars(rename = "ContractVersion"))]
-    pub struct HumanReadableContractVersion {
+    pub(crate) struct HumanReadableContractVersion {
         protocol_version_major: ProtocolVersionMajor,
         contract_version: ContractVersion,
         contract_hash: ContractHash,
@@ -217,7 +328,7 @@ pub mod contract_package {
     #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
     #[cfg_attr(feature = "json-schema", derive(JsonSchema))]
     #[cfg_attr(feature = "json-schema", schemars(rename = "ContractPackage"))]
-    pub struct HumanReadableContractPackage {
+    pub(crate) struct HumanReadableContractPackage {
         access_key: URef,
         versions: Vec<HumanReadableContractVersion>,
         disabled_versions: DisabledVersions,

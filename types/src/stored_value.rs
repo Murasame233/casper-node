@@ -87,7 +87,7 @@ pub enum StoredValueTag {
 #[cfg_attr(
     feature = "json-schema",
     derive(JsonSchema),
-    schemars(with = "serde_helpers::HumanReadableSerHelper")
+    schemars(with = "serde_helpers::HumanReadableDeserHelper")
 )]
 pub enum StoredValue {
     /// A CLValue.
@@ -886,7 +886,7 @@ impl FromBytes for StoredValue {
     }
 }
 
-mod serde_helpers {
+pub mod serde_helpers {
     use core::fmt::Display;
 
     use crate::serde_helpers::contract::HumanReadableContract;
@@ -894,7 +894,15 @@ mod serde_helpers {
     use super::*;
 
     #[derive(Serialize)]
-    pub(super) enum HumanReadableSerHelper<'a> {
+    #[cfg_attr(
+        feature = "json-schema",
+        derive(JsonSchema),
+        schemars(
+            rename = "StoredValue",
+            description = "A value stored in Global State."
+        )
+    )]
+    pub(crate) enum HumanReadableSerHelper<'a> {
         CLValue(&'a CLValue),
         Account(&'a Account),
         ContractWasm(&'a ContractWasm),
@@ -915,32 +923,62 @@ mod serde_helpers {
         NamedKey(&'a NamedKeyValue),
         Prepayment(&'a PrepaymentKind),
         EntryPoint(&'a EntryPointValue),
-        /// Raw bytes.
         RawBytes(Bytes),
     }
 
+    /// A value stored in Global State.
     #[derive(Deserialize)]
-    pub(super) enum HumanReadableDeserHelper {
+    #[cfg_attr(
+        feature = "json-schema",
+        derive(JsonSchema),
+        schemars(
+            rename = "StoredValue",
+            description = "A value stored in Global State."
+        )
+    )]
+    pub(crate) enum HumanReadableDeserHelper {
+        /// A CLValue.
         CLValue(CLValue),
+        /// An account.
         Account(Account),
+        /// Contract wasm.
         ContractWasm(ContractWasm),
+        /// A contract.
         Contract(HumanReadableContract),
+        /// A contract package.
         ContractPackage(ContractPackage),
+        /// A version 1 transfer.
         Transfer(TransferV1),
+        /// Info about a deploy.
         DeployInfo(DeployInfo),
+        /// Info about an era.
         EraInfo(EraInfo),
+        /// Variant that stores [`Bid`].
         Bid(Box<Bid>),
+        /// Variant that stores withdraw information.
         Withdraw(Vec<WithdrawPurse>),
+        /// Unbonding information.
         Unbonding(Vec<UnbondingPurse>),
+        /// An `AddressableEntity`.
         AddressableEntity(AddressableEntity),
+        /// Variant that stores [`BidKind`].
         BidKind(BidKind),
+        /// A smart contract `Package`.
         SmartContract(Package),
+        /// A record of byte code.
         ByteCode(ByteCode),
+        /// Variant that stores a message topic.
         MessageTopic(MessageTopicSummary),
+        /// Variant that stores a message digest.
         Message(MessageChecksum),
+        /// A NamedKey record.
         NamedKey(NamedKeyValue),
+        /// A prepayment record.
         EntryPoint(EntryPointValue),
-        /// Raw bytes.
+        /// An entrypoint record.
+        Prepayment(PrepaymentKind),
+        /// Raw bytes. Similar to a [`crate::StoredValue::CLValue`] but does not incur overhead of
+        /// a [`crate::CLValue`] and [`crate::CLType`].
         RawBytes(Bytes),
     }
 
@@ -1044,6 +1082,9 @@ mod serde_helpers {
                 HumanReadableDeserHelper::NamedKey(payload) => StoredValue::NamedKey(payload),
                 HumanReadableDeserHelper::EntryPoint(payload) => StoredValue::EntryPoint(payload),
                 HumanReadableDeserHelper::RawBytes(bytes) => StoredValue::RawBytes(bytes.into()),
+                HumanReadableDeserHelper::Prepayment(prepayment_kind) => {
+                    StoredValue::Prepayment(prepayment_kind)
+                }
             })
         }
     }
@@ -1097,15 +1138,23 @@ mod tests {
                     "args": [],
                     "ret": "I32",
                     "access": "Public",
-                    "entry_point_type": "Called"
+                    "entry_point_type": "Session"
                 },
                 {
                     "name": "counter_inc",
                     "args": [],
                     "ret": "Unit",
                     "access": "Public",
-                    "entry_point_type": "Called"
+                    "entry_point_type": "Contract"
+                },
+                {
+                    "name": "counter_zero",
+                    "args": [],
+                    "ret": "Unit",
+                    "access": "Public",
+                    "entry_point_type": "Factory"
                 }
+                
             ],
             "protocol_version": "2.0.0"
         }
@@ -1128,21 +1177,21 @@ mod tests {
                         "args": [],
                         "ret": "I32",
                         "access": "Public",
-                        "entry_point_type": "Called"
+                        "entry_point_type": "Session"
                     },
                     {
                         "name": "counter_get",
                         "args": [],
                         "ret": "Unit",
                         "access": "Public",
-                        "entry_point_type": "Caller"
+                        "entry_point_type": "Contract"
                     },
                     {
                         "name": "counter_inc",
                         "args": [],
                         "ret": "Unit",
                         "access": "Public",
-                        "entry_point_type": "Called"
+                        "entry_point_type": "Factory"
                     }
                 ],
                 "protocol_version": "2.0.0"
@@ -1191,7 +1240,7 @@ mod tests {
     "#;
 
     #[test]
-    fn contract_stored_value_serializes_entry_points_to_flat_array() {
+    fn cannot_deserialize_contract_with_non_unique_entry_point_names() {
         let res =
             serde_json::from_str::<StoredValue>(JSON_CONTRACT_NON_UNIQUE_ENTRYPOINT_NAMES_RAW);
         assert!(res.is_err());
@@ -1202,7 +1251,7 @@ mod tests {
     }
 
     #[test]
-    fn cannot_deserialize_contract_with_non_unique_entry_point_names() {
+    fn contract_stored_value_serializes_entry_points_to_flat_array() {
         let value_from_raw_json = serde_json::from_str::<Value>(STORED_VALUE_CONTRACT_RAW).unwrap();
         let deserialized = serde_json::from_str::<StoredValue>(STORED_VALUE_CONTRACT_RAW).unwrap();
         let roundtrip_value = serde_json::to_value(&deserialized).unwrap();
