@@ -33,11 +33,7 @@ pub struct WasmConfig {
 
 impl WasmConfig {
     /// Creates new Wasm config.
-    pub const fn new(
-        messages_limits: MessageLimits,
-        v1: WasmV1Config,
-        v2: WasmV2Config,
-    ) -> Self {
+    pub const fn new(messages_limits: MessageLimits, v1: WasmV1Config, v2: WasmV2Config) -> Self {
         Self {
             messages_limits,
             v1,
@@ -84,8 +80,8 @@ impl ToBytes for WasmConfig {
 
     fn serialized_length(&self) -> usize {
         self.messages_limits.serialized_length()
-        + self.v1.serialized_length()
-        + self.v2.serialized_length()
+            + self.v1.serialized_length()
+            + self.v2.serialized_length()
     }
 }
 
@@ -99,7 +95,7 @@ impl FromBytes for WasmConfig {
             WasmConfig {
                 messages_limits,
                 v1,
-                v2
+                v2,
             },
             rem,
         ))
@@ -136,7 +132,8 @@ pub mod gens {
 
     use crate::{
         chainspec::vm_config::{
-            message_limits::gens::message_limits_arb, wasm_v1_config::gens::wasm_v1_config_arb, wasm_v2_config::gens::wasm_v2_config_arb,
+            message_limits::gens::message_limits_arb, wasm_v1_config::gens::wasm_v1_config_arb,
+            wasm_v2_config::gens::wasm_v2_config_arb,
         },
         WasmConfig,
     };

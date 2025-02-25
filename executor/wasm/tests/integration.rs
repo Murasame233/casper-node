@@ -3,12 +3,16 @@ use std::{fs::File, path::Path, sync::Arc};
 use bytes::Bytes;
 use casper_execution_engine::engine_state::ExecutionEngineV1;
 use casper_executor_wasm::{
-    install::{InstallContractError, InstallContractRequest, InstallContractRequestBuilder, InstallContractResult},
+    install::{
+        InstallContractError, InstallContractRequest, InstallContractRequestBuilder,
+        InstallContractResult,
+    },
     ExecutorConfigBuilder, ExecutorKind, ExecutorV2,
 };
-use casper_executor_wasm_interface::{executor::{
-    ExecuteRequest, ExecuteRequestBuilder, ExecuteWithProviderResult, ExecutionKind,
-}, HostError};
+use casper_executor_wasm_interface::{
+    executor::{ExecuteRequest, ExecuteRequestBuilder, ExecuteWithProviderResult, ExecutionKind},
+    HostError,
+};
 use casper_storage::{
     data_access_layer::{GenesisRequest, GenesisResult, QueryRequest, QueryResult},
     global_state::{
@@ -21,7 +25,10 @@ use casper_storage::{
     AddressGenerator,
 };
 use casper_types::{
-    account::AccountHash, BlockHash, ChainspecRegistry, Digest, GenesisAccount, GenesisConfig, HostFunction, HostFunctionCostsV2, Key, Motes, Phase, ProtocolVersion, PublicKey, SecretKey, StorageCosts, StoredValue, SystemConfig, Timestamp, TransactionHash, TransactionV1Hash, WasmConfig, WasmV2Config, U512
+    account::AccountHash, BlockHash, ChainspecRegistry, Digest, GenesisAccount, GenesisConfig,
+    HostFunction, HostFunctionCostsV2, Key, Motes, Phase, ProtocolVersion, PublicKey, SecretKey,
+    StorageCosts, StoredValue, SystemConfig, Timestamp, TransactionHash, TransactionV1Hash,
+    WasmConfig, WasmV2Config, U512,
 };
 use fs_extra::dir;
 use once_cell::sync::Lazy;
@@ -146,7 +153,7 @@ fn harness() {
         .with_parent_block_hash(BlockHash::new(Digest::hash(b"bl0ck")))
         .build()
         .expect("should build");
-    
+
     run_wasm_session(
         &mut executor,
         &mut global_state,
@@ -192,8 +199,8 @@ pub(crate) fn make_executor() -> ExecutorV2 {
 //         .with_block_time(Timestamp::now().into())
 //         .with_state_hash(Digest::from_raw([0; 32])) // TODO: Carry on state root hash
 //         .with_block_height(1) // TODO: Carry on block height
-//         .with_parent_block_hash(BlockHash::new(Digest::from_raw([0; 32]))) // TODO: Carry on parent block hash
-//         .build()
+//         .with_parent_block_hash(BlockHash::new(Digest::from_raw([0; 32]))) // TODO: Carry on
+// parent block hash         .build()
 //         .expect("should build");
 
 //     let create_result = run_create_contract(
@@ -221,8 +228,8 @@ pub(crate) fn make_executor() -> ExecutorV2 {
 //         .with_block_time(Timestamp::now().into())
 //         .with_state_hash(Digest::from_raw([0; 32])) // TODO: Carry on state root hash
 //         .with_block_height(1) // TODO: Carry on block height
-//         .with_parent_block_hash(BlockHash::new(Digest::from_raw([0; 32]))) // TODO: Carry on parent block hash
-//         .build()
+//         .with_parent_block_hash(BlockHash::new(Digest::from_raw([0; 32]))) // TODO: Carry on
+// parent block hash         .build()
 //         .expect("should build");
 
 //     let _effects_2 = run_wasm_session(
@@ -646,7 +653,10 @@ fn backwards_compatibility() {
 
 // host function tests
 
-fn call_dummy_host_fn_by_name(host_function_name: &str, gas_limit: u64) -> Result<InstallContractResult, InstallContractError> {
+fn call_dummy_host_fn_by_name(
+    host_function_name: &str,
+    gas_limit: u64,
+) -> Result<InstallContractResult, InstallContractError> {
     let executor = {
         let execution_engine_v1 = ExecutionEngineV1::default();
         let default_wasm_config = WasmV2Config::default();
@@ -668,7 +678,7 @@ fn call_dummy_host_fn_by_name(host_function_name: &str, gas_limit: u64) -> Resul
                 upgrade: HostFunction::fixed(1),
                 call: HostFunction::fixed(1),
                 print: HostFunction::fixed(1),
-            }
+            },
         );
         let executor_config = ExecutorConfigBuilder::default()
             .with_memory_limit(17)
@@ -705,15 +715,16 @@ fn call_dummy_host_fn_by_name(host_function_name: &str, gas_limit: u64) -> Resul
         .build()
         .expect("should build");
 
-    executor
-        .install_contract(state_root_hash, &mut global_state, create_request)
+    executor.install_contract(state_root_hash, &mut global_state, create_request)
 }
 
 fn assert_consumes_gas(host_function_name: &str) {
     let result = call_dummy_host_fn_by_name(host_function_name, 1);
     assert!(result.is_err_and(|e| match e {
-        InstallContractError::Constructor { host_error: HostError::CalleeGasDepleted } => true,
-        _ => false
+        InstallContractError::Constructor {
+            host_error: HostError::CalleeGasDepleted,
+        } => true,
+        _ => false,
     }));
 }
 
@@ -734,7 +745,10 @@ fn host_functions_consume_gas() {
     assert_consumes_gas("write");
 }
 
-fn write_n_bytes_at_limit(bytes_len: u64, gas_limit: u64) -> Result<InstallContractResult, InstallContractError> {
+fn write_n_bytes_at_limit(
+    bytes_len: u64,
+    gas_limit: u64,
+) -> Result<InstallContractResult, InstallContractError> {
     let executor = {
         let execution_engine_v1 = ExecutionEngineV1::default();
         let default_wasm_config = WasmV2Config::default();
@@ -772,9 +786,7 @@ fn write_n_bytes_at_limit(bytes_len: u64, gas_limit: u64) -> Result<InstallContr
 
     let address_generator = make_address_generator();
 
-    let input_data = borsh::to_vec(&(bytes_len,))
-        .map(Bytes::from)
-        .unwrap();
+    let input_data = borsh::to_vec(&(bytes_len,)).map(Bytes::from).unwrap();
 
     let create_request = InstallContractRequestBuilder::default()
         .with_initiator(*DEFAULT_ACCOUNT_HASH)
@@ -793,8 +805,7 @@ fn write_n_bytes_at_limit(bytes_len: u64, gas_limit: u64) -> Result<InstallContr
         .build()
         .expect("should build");
 
-    executor
-        .install_contract(state_root_hash, &mut global_state, create_request)
+    executor.install_contract(state_root_hash, &mut global_state, create_request)
 }
 
 #[test]
@@ -804,7 +815,9 @@ fn consume_gas_on_write() {
 
     let out_of_gas_write_exceeded_gas_limit = write_n_bytes_at_limit(50, 10);
     assert!(out_of_gas_write_exceeded_gas_limit.is_err_and(|e| match e {
-        InstallContractError::Constructor { host_error: HostError::CalleeGasDepleted } => true,
-        _ => false
+        InstallContractError::Constructor {
+            host_error: HostError::CalleeGasDepleted,
+        } => true,
+        _ => false,
     }));
 }

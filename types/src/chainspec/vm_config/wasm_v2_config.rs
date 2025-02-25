@@ -154,7 +154,8 @@ impl Distribution<WasmV2Config> for Standard {
 pub mod gens {
     use crate::{
         chainspec::vm_config::{
-            host_function_costs_v2::gens::host_function_costs_v2_arb, opcode_costs::gens::opcode_costs_arb
+            host_function_costs_v2::gens::host_function_costs_v2_arb,
+            opcode_costs::gens::opcode_costs_arb,
         },
         gens::example_u32_arb,
     };

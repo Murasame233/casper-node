@@ -49,6 +49,6 @@ pub use storage_costs::StorageCosts;
 pub use system_config::SystemConfig;
 pub use wasm_config::WasmConfig;
 pub use wasm_v1_config::WasmV1Config;
-pub use wasm_v2_config::WasmV2Config;
 #[cfg(any(feature = "testing", test))]
 pub use wasm_v1_config::{DEFAULT_MAX_STACK_HEIGHT, DEFAULT_WASM_MAX_MEMORY};
+pub use wasm_v2_config::WasmV2Config;

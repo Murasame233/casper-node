@@ -72,9 +72,9 @@ pub use upgrade_config::ProtocolUpgradeConfig;
 pub use vacancy_config::VacancyConfig;
 pub use vm_config::{
     AuctionCosts, BrTableCost, ChainspecRegistry, ControlFlowCosts, HandlePaymentCosts,
-    HostFunction, HostFunctionCost, HostFunctionCostsV1, HostFunctionCostsV2, MessageLimits, MintCosts, OpcodeCosts,
-    StandardPaymentCosts, StorageCosts, SystemConfig, WasmConfig, WasmV1Config, WasmV2Config,
-    DEFAULT_HOST_FUNCTION_NEW_DICTIONARY,
+    HostFunction, HostFunctionCost, HostFunctionCostsV1, HostFunctionCostsV2, MessageLimits,
+    MintCosts, OpcodeCosts, StandardPaymentCosts, StorageCosts, SystemConfig, WasmConfig,
+    WasmV1Config, WasmV2Config, DEFAULT_HOST_FUNCTION_NEW_DICTIONARY,
 };
 #[cfg(any(feature = "testing", test))]
 pub use vm_config::{
@@ -88,9 +88,9 @@ pub use vm_config::{
     DEFAULT_CONTROL_FLOW_RETURN_OPCODE, DEFAULT_CONTROL_FLOW_SELECT_OPCODE,
     DEFAULT_CONVERSION_COST, DEFAULT_CURRENT_MEMORY_COST, DEFAULT_DELEGATE_COST, DEFAULT_DIV_COST,
     DEFAULT_GLOBAL_COST, DEFAULT_GROW_MEMORY_COST, DEFAULT_INTEGER_COMPARISON_COST,
-    DEFAULT_LOAD_COST, DEFAULT_LOCAL_COST, DEFAULT_MUL_COST, DEFAULT_NEW_DICTIONARY_COST,
-    DEFAULT_NOP_COST, DEFAULT_STORE_COST, DEFAULT_TRANSFER_COST, DEFAULT_UNREACHABLE_COST,
-    DEFAULT_MAX_STACK_HEIGHT, DEFAULT_WASM_MAX_MEMORY,
+    DEFAULT_LOAD_COST, DEFAULT_LOCAL_COST, DEFAULT_MAX_STACK_HEIGHT, DEFAULT_MUL_COST,
+    DEFAULT_NEW_DICTIONARY_COST, DEFAULT_NOP_COST, DEFAULT_STORE_COST, DEFAULT_TRANSFER_COST,
+    DEFAULT_UNREACHABLE_COST, DEFAULT_WASM_MAX_MEMORY,
 };
 
 /// A collection of configuration settings describing the state of the system at genesis and after

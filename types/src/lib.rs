@@ -128,10 +128,10 @@ pub use chainspec::{
     ControlFlowCosts, CoreConfig, DelegatorConfig, DeployConfig, FeeHandling, GenesisAccount,
     GenesisConfig, GenesisValidator, GlobalStateUpdate, GlobalStateUpdateConfig,
     GlobalStateUpdateError, HandlePaymentCosts, HighwayConfig, HoldBalanceHandling, HostFunction,
-    HostFunctionCost, HostFunctionCostsV1, HostFunctionCostsV2, LegacyRequiredFinality, MessageLimits, MintCosts,
-    NetworkConfig, NextUpgrade, OpcodeCosts, PricingHandling, ProtocolConfig,
-    ProtocolUpgradeConfig, RefundHandling, StandardPaymentCosts, StorageCosts, SystemConfig,
-    TransactionConfig, TransactionLaneDefinition, TransactionV1Config, VacancyConfig,
+    HostFunctionCost, HostFunctionCostsV1, HostFunctionCostsV2, LegacyRequiredFinality,
+    MessageLimits, MintCosts, NetworkConfig, NextUpgrade, OpcodeCosts, PricingHandling,
+    ProtocolConfig, ProtocolUpgradeConfig, RefundHandling, StandardPaymentCosts, StorageCosts,
+    SystemConfig, TransactionConfig, TransactionLaneDefinition, TransactionV1Config, VacancyConfig,
     ValidatorConfig, WasmConfig, WasmV1Config, WasmV2Config, DEFAULT_GAS_HOLD_INTERVAL,
     DEFAULT_HOST_FUNCTION_NEW_DICTIONARY, DEFAULT_MINIMUM_BID_AMOUNT, DEFAULT_REFUND_HANDLING,
 };
@@ -148,9 +148,9 @@ pub use chainspec::{
     DEFAULT_CONVERSION_COST, DEFAULT_CURRENT_MEMORY_COST, DEFAULT_DELEGATE_COST, DEFAULT_DIV_COST,
     DEFAULT_FEE_HANDLING, DEFAULT_GLOBAL_COST, DEFAULT_GROW_MEMORY_COST,
     DEFAULT_INTEGER_COMPARISON_COST, DEFAULT_LARGE_TRANSACTION_GAS_LIMIT, DEFAULT_LOAD_COST,
-    DEFAULT_LOCAL_COST, DEFAULT_MAX_PAYMENT_MOTES, DEFAULT_MIN_TRANSFER_MOTES, DEFAULT_MUL_COST,
-    DEFAULT_NEW_DICTIONARY_COST, DEFAULT_NOP_COST, DEFAULT_STORE_COST, DEFAULT_TRANSFER_COST,
-    DEFAULT_UNREACHABLE_COST, DEFAULT_MAX_STACK_HEIGHT, DEFAULT_WASM_MAX_MEMORY,
+    DEFAULT_LOCAL_COST, DEFAULT_MAX_PAYMENT_MOTES, DEFAULT_MAX_STACK_HEIGHT,
+    DEFAULT_MIN_TRANSFER_MOTES, DEFAULT_MUL_COST, DEFAULT_NEW_DICTIONARY_COST, DEFAULT_NOP_COST,
+    DEFAULT_STORE_COST, DEFAULT_TRANSFER_COST, DEFAULT_UNREACHABLE_COST, DEFAULT_WASM_MAX_MEMORY,
 };
 pub use contract_wasm::{ContractWasm, ContractWasmHash};
 #[doc(inline)]

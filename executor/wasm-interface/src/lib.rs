@@ -1,7 +1,7 @@
 pub mod executor;
 
 use bytes::Bytes;
-use casper_types::{HostFunction, HostFunctionCost, HostFunctionCostsV1};
+use casper_types::{HostFunction, HostFunctionCost};
 use thiserror::Error;
 
 use casper_executor_wasm_common::flags::ReturnFlags;
@@ -217,7 +217,9 @@ impl ConfigBuilder {
     /// Build the configuration.
     pub fn build(self) -> Config {
         let gas_limit = self.gas_limit.expect("Required field missing: gas_limit");
-        let memory_limit = self.memory_limit.expect("Required field missing: memory_limit");
+        let memory_limit = self
+            .memory_limit
+            .expect("Required field missing: memory_limit");
         Config {
             gas_limit,
             memory_limit,

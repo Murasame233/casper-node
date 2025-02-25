@@ -9,7 +9,10 @@ use casper_engine_test_support::{
 };
 use casper_execution_engine::{engine_state::Error, execution::ExecError};
 use casper_types::{
-    addressable_entity::DEFAULT_ENTRY_POINT_NAME, runtime_args, ApiError, EraId, HostFunctionCostsV1, HostFunctionCostsV2, MessageLimits, OpcodeCosts, ProtocolVersion, RuntimeArgs, WasmConfig, WasmV1Config, WasmV2Config, DEFAULT_MAX_STACK_HEIGHT, DEFAULT_WASM_MAX_MEMORY
+    addressable_entity::DEFAULT_ENTRY_POINT_NAME, runtime_args, ApiError, EraId,
+    HostFunctionCostsV1, HostFunctionCostsV2, MessageLimits, OpcodeCosts, ProtocolVersion,
+    RuntimeArgs, WasmConfig, WasmV1Config, WasmV2Config, DEFAULT_MAX_STACK_HEIGHT,
+    DEFAULT_WASM_MAX_MEMORY,
 };
 
 const CONTRACT_EE_966_REGRESSION: &str = "ee_966_regression.wasm";
@@ -27,7 +30,7 @@ static DOUBLED_WASM_MEMORY_LIMIT: Lazy<WasmConfig> = Lazy::new(|| {
         DEFAULT_WASM_MAX_MEMORY * 2,
         DEFAULT_MAX_STACK_HEIGHT,
         OpcodeCosts::default(),
-        HostFunctionCostsV2::default()
+        HostFunctionCostsV2::default(),
     );
     WasmConfig::new(MessageLimits::default(), wasm_v1_config, wasm_v2_config)
 });
@@ -112,10 +115,8 @@ fn should_run_ee_966_cant_have_too_much_initial_memory() {
 #[ignore]
 #[test]
 fn should_run_ee_966_should_request_exactly_maximum() {
-    let session_code = make_session_code_with_memory_pages(
-        DEFAULT_WASM_MAX_MEMORY,
-        Some(DEFAULT_WASM_MAX_MEMORY),
-    );
+    let session_code =
+        make_session_code_with_memory_pages(DEFAULT_WASM_MAX_MEMORY, Some(DEFAULT_WASM_MAX_MEMORY));
 
     let exec_request = make_request_with_session_bytes(session_code);
 
@@ -189,10 +190,8 @@ fn should_run_ee_966_cant_have_way_too_much_max_memory() {
 #[ignore]
 #[test]
 fn should_run_ee_966_cant_have_larger_initial_than_max_memory() {
-    let session_code = make_session_code_with_memory_pages(
-        DEFAULT_WASM_MAX_MEMORY,
-        Some(MINIMUM_INITIAL_MEMORY),
-    );
+    let session_code =
+        make_session_code_with_memory_pages(DEFAULT_WASM_MAX_MEMORY, Some(MINIMUM_INITIAL_MEMORY));
 
     let exec_request = make_request_with_session_bytes(session_code);
 

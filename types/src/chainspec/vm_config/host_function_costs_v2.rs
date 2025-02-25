@@ -168,60 +168,38 @@ impl Default for HostFunctionCostsV2 {
             ),
             copy_input: HostFunction::new(
                 DEFAULT_COPY_INPUT_COST,
-                [
-                    NOT_USED,
-                    DEFAULT_COPY_INPUT_VALUE_SIZE_WEIGHT
-                ],
+                [NOT_USED, DEFAULT_COPY_INPUT_VALUE_SIZE_WEIGHT],
             ),
             ret: HostFunction::new(DEFAULT_RET_COST, [NOT_USED, DEFAULT_RET_VALUE_SIZE_WEIGHT]),
-            create: HostFunction::new(DEFAULT_CREATE_COST, [
-                NOT_USED,
-                DEFAULT_CREATE_CODE_SIZE_WEIGHT,
-                NOT_USED,
-                NOT_USED,
-                DEFAULT_CREATE_ENTRYPOINT_SIZE_WEIGHT,
-                NOT_USED,
-                DEFAULT_CREATE_INPUT_SIZE_WEIGHT,
-                NOT_USED,
-                DEFAULT_CREATE_SEED_SIZE_WEIGHT,
-                NOT_USED
-            ]),
-            env_caller: HostFunction::new(DEFAULT_GET_CALLER_COST, [
-                NOT_USED,
-                NOT_USED,
-                NOT_USED,
-            ]),
+            create: HostFunction::new(
+                DEFAULT_CREATE_COST,
+                [
+                    NOT_USED,
+                    DEFAULT_CREATE_CODE_SIZE_WEIGHT,
+                    NOT_USED,
+                    NOT_USED,
+                    DEFAULT_CREATE_ENTRYPOINT_SIZE_WEIGHT,
+                    NOT_USED,
+                    DEFAULT_CREATE_INPUT_SIZE_WEIGHT,
+                    NOT_USED,
+                    DEFAULT_CREATE_SEED_SIZE_WEIGHT,
+                    NOT_USED,
+                ],
+            ),
+            env_caller: HostFunction::new(DEFAULT_GET_CALLER_COST, [NOT_USED, NOT_USED, NOT_USED]),
             env_balance: HostFunction::fixed(DEFAULT_ENV_BALANCE_COST),
             env_block_time: HostFunction::fixed(DEFAULT_ENV_BLOCK_TIME_COST),
             env_transferred_value: HostFunction::fixed(DEFAULT_ENV_TRANSFERRED_VALUE_COST),
-            transfer: HostFunction::new(DEFAULT_TRANSFER_COST, [
-                NOT_USED,
-                NOT_USED,
-                NOT_USED,
-            ]),
+            transfer: HostFunction::new(DEFAULT_TRANSFER_COST, [NOT_USED, NOT_USED, NOT_USED]),
             upgrade: HostFunction::new(
                 DEFAULT_FIXED_COST,
-                [
-                    NOT_USED,
-                    NOT_USED,
-                    NOT_USED,
-                    NOT_USED,
-                    NOT_USED,
-                    NOT_USED,
-                ],
+                [NOT_USED, NOT_USED, NOT_USED, NOT_USED, NOT_USED, NOT_USED],
             ),
             call: HostFunction::new(
                 DEFAULT_CALL_COST,
                 [
+                    NOT_USED, NOT_USED, NOT_USED, NOT_USED, NOT_USED, NOT_USED, NOT_USED, NOT_USED,
                     NOT_USED,
-                    NOT_USED,
-                    NOT_USED,
-                    NOT_USED,
-                    NOT_USED,
-                    NOT_USED,
-                    NOT_USED,
-                    NOT_USED,
-                    NOT_USED
                 ],
             ),
             print: HostFunction::new(
@@ -333,7 +311,8 @@ pub mod gens {
     use crate::{HostFunction, HostFunctionCost, HostFunctionCostsV2};
 
     #[allow(unused)]
-    pub fn host_function_cost_v2_arb<T: Copy + Arbitrary>() -> impl Strategy<Value = HostFunction<T>> {
+    pub fn host_function_cost_v2_arb<T: Copy + Arbitrary>() -> impl Strategy<Value = HostFunction<T>>
+    {
         (any::<HostFunctionCost>(), any::<T>())
             .prop_map(|(cost, arguments)| HostFunction::new(cost, arguments))
     }

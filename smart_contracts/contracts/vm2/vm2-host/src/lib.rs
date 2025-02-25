@@ -1,7 +1,11 @@
 #![cfg_attr(target_arch = "wasm32", no_main)]
 
 use casper_macros::casper;
-use casper_sdk::{casper_executor_wasm_common::{flags::ReturnFlags, keyspace::Keyspace}, host::{self, Entity}, prelude::*};
+use casper_sdk::{
+    casper_executor_wasm_common::{flags::ReturnFlags, keyspace::Keyspace},
+    host::{self, Entity},
+    prelude::*,
+};
 
 const CURRENT_VERSION: &str = "v1";
 
@@ -26,21 +30,49 @@ impl MinHostWrapper {
     pub fn new(with_host_fn_call: String) -> Self {
         let ret = Self;
         match with_host_fn_call.as_str() {
-            "get_caller" => { ret.get_caller(); },
-            "get_block_time" => { ret.get_block_time(); },
-            "get_value" => { ret.get_value(); }
-            "get_balance_of" => { ret.get_balance_of(); }
-            "call" => { ret.call(); }
-            "input" => { ret.input(); }
-            "create" => { ret.create(); }
-            "print" => { ret.print(); }
-            "read" => { ret.read(); }
-            "ret" => { ret.ret(); }
-            "transfer" => { ret.transfer(); }
-            "upgrade" => { ret.upgrade(); }
-            "write" => { ret.write(); }
-            "write_n_bytes" => { ret.write(); }
-            _ => panic!("Unknown host function")
+            "get_caller" => {
+                ret.get_caller();
+            }
+            "get_block_time" => {
+                ret.get_block_time();
+            }
+            "get_value" => {
+                ret.get_value();
+            }
+            "get_balance_of" => {
+                ret.get_balance_of();
+            }
+            "call" => {
+                ret.call();
+            }
+            "input" => {
+                ret.input();
+            }
+            "create" => {
+                ret.create();
+            }
+            "print" => {
+                ret.print();
+            }
+            "read" => {
+                ret.read();
+            }
+            "ret" => {
+                ret.ret();
+            }
+            "transfer" => {
+                ret.transfer();
+            }
+            "upgrade" => {
+                ret.upgrade();
+            }
+            "write" => {
+                ret.write();
+            }
+            "write_n_bytes" => {
+                ret.write();
+            }
+            _ => panic!("Unknown host function"),
         }
         ret
     }
@@ -74,7 +106,7 @@ impl MinHostWrapper {
     }
 
     pub fn get_balance_of(&self) -> u128 {
-        host::get_balance_of(&Entity::Account([0u8;32]))
+        host::get_balance_of(&Entity::Account([0u8; 32]))
     }
 
     pub fn call(&self) {
@@ -94,7 +126,7 @@ impl MinHostWrapper {
     }
 
     pub fn read(&self) {
-        host::casper_read(Keyspace::Context(&[]), |_|{None}).ok();
+        host::casper_read(Keyspace::Context(&[]), |_| None).ok();
     }
 
     pub fn ret(&self) {
@@ -102,7 +134,7 @@ impl MinHostWrapper {
     }
 
     pub fn transfer(&self) {
-        host::casper_transfer(&[0;32], 0).ok();
+        host::casper_transfer(&[0; 32], 0).ok();
     }
 
     pub fn upgrade(&self) {

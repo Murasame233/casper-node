@@ -20,10 +20,10 @@ use casper_storage::{
     tracking_copy::{TrackingCopyEntityExt, TrackingCopyError, TrackingCopyExt},
 };
 
-use casper_types::bytesrepr::ToBytes;
 use casper_types::{
     account::AccountHash,
     addressable_entity::{ActionThresholds, AssociatedKeys, NamedKeyAddr},
+    bytesrepr::ToBytes,
     AddressableEntity, AddressableEntityHash, BlockHash, ByteCode, ByteCodeAddr, ByteCodeHash,
     ByteCodeKind, CLType, ContractRuntimeTag, Digest, EntityAddr, EntityKind, EntryPoint,
     EntryPointAccess, EntryPointAddr, EntryPointPayment, EntryPointType, EntryPointValue, Groups,
@@ -50,16 +50,13 @@ enum EntityKindTag {
 fn tracking_copy_write_and_charge<S: GlobalStateReader, E: Executor>(
     caller: &mut impl Caller<Context = Context<S, E>>,
     key: Key,
-    value: StoredValue
+    value: StoredValue,
 ) {
     let storage_costs = &caller.context().storage_costs;
     let gas_cost = storage_costs.calculate_gas_cost(value.serialized_length());
     caller.consume_gas(gas_cost.value().as_u64());
 
-    caller.context_mut().tracking_copy.write(
-        key,
-        value,
-    );
+    caller.context_mut().tracking_copy.write(key, value);
 }
 
 /// Write value under a key.
@@ -72,13 +69,10 @@ pub fn casper_write<S: GlobalStateReader, E: Executor>(
     value_size: u32,
 ) -> VMResult<i32> {
     let write_cost = caller.context().config.host_function_costs().write;
-    caller.charge_host_function_call(&write_cost, [
-        key_space as u32,
-        key_ptr,
-        key_size,
-        value_ptr,
-        value_size,
-    ]);
+    caller.charge_host_function_call(
+        &write_cost,
+        [key_space as u32, key_ptr, key_size, value_ptr, value_size],
+    );
 
     let keyspace_tag = match KeyspaceTag::from_u64(key_space) {
         Some(keyspace_tag) => keyspace_tag,
@@ -161,11 +155,7 @@ pub fn casper_write<S: GlobalStateReader, E: Executor>(
         }
     };
 
-    tracking_copy_write_and_charge(
-        &mut caller,
-        global_state_key,
-        stored_value
-    );
+    tracking_copy_write_and_charge(&mut caller, global_state_key, stored_value);
 
     Ok(0)
 }
@@ -195,14 +185,17 @@ pub fn casper_read<S: GlobalStateReader, E: Executor>(
     alloc_ctx: u32,
 ) -> Result<i32, VMError> {
     let read_cost = caller.context().config.host_function_costs().read;
-    caller.charge_host_function_call(&read_cost, [
-        key_tag as u32,
-        key_ptr,
-        key_size,
-        info_ptr,
-        cb_alloc,
-        alloc_ctx,
-    ]);
+    caller.charge_host_function_call(
+        &read_cost,
+        [
+            key_tag as u32,
+            key_ptr,
+            key_size,
+            info_ptr,
+            cb_alloc,
+            alloc_ctx,
+        ],
+    );
 
     let keyspace_tag = match KeyspaceTag::from_u64(key_tag) {
         Some(keyspace_tag) => keyspace_tag,
@@ -404,18 +397,21 @@ pub fn casper_create<S: GlobalStateReader + 'static, E: Executor + 'static>(
     result_ptr: u32,
 ) -> VMResult<HostResult> {
     let create_cost = caller.context().config.host_function_costs().create;
-    caller.charge_host_function_call(&create_cost, [
-        code_ptr,
-        code_len,
-        value_ptr,
-        entry_point_ptr,
-        entry_point_len,
-        input_ptr,
-        input_len,
-        seed_ptr,
-        seed_len,
-        result_ptr,
-    ]);
+    caller.charge_host_function_call(
+        &create_cost,
+        [
+            code_ptr,
+            code_len,
+            value_ptr,
+            entry_point_ptr,
+            entry_point_len,
+            input_ptr,
+            input_len,
+            seed_ptr,
+            seed_len,
+            result_ptr,
+        ],
+    );
 
     let code = if code_ptr != 0 {
         caller
@@ -524,14 +520,14 @@ pub fn casper_create<S: GlobalStateReader + 'static, E: Executor + 'static>(
     tracking_copy_write_and_charge(
         &mut caller,
         Key::SmartContract(smart_contract_addr),
-        StoredValue::SmartContract(smart_contract_package)
+        StoredValue::SmartContract(smart_contract_package),
     );
 
     // 2. Store wasm
     tracking_copy_write_and_charge(
         &mut caller,
         Key::ByteCode(bytecode_addr),
-        StoredValue::ByteCode(bytecode)
+        StoredValue::ByteCode(bytecode),
     );
 
     // 3. Store addressable entity
@@ -572,7 +568,7 @@ pub fn casper_create<S: GlobalStateReader + 'static, E: Executor + 'static>(
     tracking_copy_write_and_charge(
         &mut caller,
         addressable_entity_key,
-        StoredValue::AddressableEntity(addressable_entity)
+        StoredValue::AddressableEntity(addressable_entity),
     );
 
     let _initial_state = match constructor_entry_point {
@@ -676,7 +672,8 @@ pub fn casper_call<S: GlobalStateReader + 'static, E: Executor + 'static>(
 ) -> VMResult<HostResult> {
     let call_cost = caller.context().config.host_function_costs().call;
     caller.charge_host_function_call(
-        &call_cost, [
+        &call_cost,
+        [
             address_ptr,
             address_len,
             value_ptr,
@@ -686,7 +683,7 @@ pub fn casper_call<S: GlobalStateReader + 'static, E: Executor + 'static>(
             input_len,
             cb_alloc,
             cb_ctx,
-        ]
+        ],
     );
 
     // 1. Look up address in the storage
@@ -844,7 +841,11 @@ pub fn casper_env_transferred_value<S: GlobalStateReader, E: Executor>(
     mut caller: impl Caller<Context = Context<S, E>>,
     output: u32,
 ) -> Result<(), VMError> {
-    let transferred_value_cost = caller.context().config.host_function_costs().env_transferred_value;
+    let transferred_value_cost = caller
+        .context()
+        .config
+        .host_function_costs()
+        .env_transferred_value;
     caller.charge_host_function_call(&transferred_value_cost, [output]);
 
     let result = caller.context().transferred_value;
@@ -860,12 +861,10 @@ pub fn casper_env_balance<S: GlobalStateReader, E: Executor>(
     output_ptr: u32,
 ) -> VMResult<u32> {
     let balance_cost = caller.context().config.host_function_costs().env_balance;
-    caller.charge_host_function_call(&balance_cost, [
-        entity_kind,
-        entity_addr_ptr,
-        entity_addr_len,
-        output_ptr
-    ]);
+    caller.charge_host_function_call(
+        &balance_cost,
+        [entity_kind, entity_addr_ptr, entity_addr_len, output_ptr],
+    );
 
     let entity_key = match EntityKindTag::from_u32(entity_kind) {
         Some(EntityKindTag::Account) => {
@@ -981,11 +980,10 @@ pub fn casper_transfer<S: GlobalStateReader + 'static, E: Executor>(
     amount_ptr: u32,
 ) -> VMResult<u32> {
     let transfer_cost = caller.context().config.host_function_costs().transfer;
-    caller.charge_host_function_call(&transfer_cost, [
-        entity_addr_ptr,
-        entity_addr_len,
-        amount_ptr,
-    ]);
+    caller.charge_host_function_call(
+        &transfer_cost,
+        [entity_addr_ptr, entity_addr_len, amount_ptr],
+    );
 
     if entity_addr_len != 32 {
         // Invalid entity address; failing to proceed with the transfer
@@ -1136,14 +1134,17 @@ pub fn casper_upgrade<S: GlobalStateReader + 'static, E: Executor>(
     input_size: u32,
 ) -> VMResult<HostResult> {
     let upgrade_cost = caller.context().config.host_function_costs().upgrade;
-    caller.charge_host_function_call(&upgrade_cost, [
-        code_ptr,
-        code_size,
-        entry_point_ptr,
-        entry_point_size,
-        input_ptr,
-        input_size,
-    ]);
+    caller.charge_host_function_call(
+        &upgrade_cost,
+        [
+            code_ptr,
+            code_size,
+            entry_point_ptr,
+            entry_point_size,
+            input_ptr,
+            input_size,
+        ],
+    );
 
     let code = caller
         .memory_read(code_ptr, code_size as usize)
@@ -1246,7 +1247,7 @@ pub fn casper_upgrade<S: GlobalStateReader + 'static, E: Executor>(
         StoredValue::ByteCode(ByteCode::new(
             ByteCodeKind::V2CasperWasm,
             code.clone().into(),
-        ))
+        )),
     );
 
     // 3. Execute upgrade routine (if specified)

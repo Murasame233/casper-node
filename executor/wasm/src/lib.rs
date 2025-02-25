@@ -8,9 +8,7 @@ use std::{
 
 use bytes::Bytes;
 use casper_execution_engine::{
-    engine_state::{
-        BlockInfo, Error as EngineError, ExecutableItem, ExecutionEngineV1,
-    },
+    engine_state::{BlockInfo, Error as EngineError, ExecutableItem, ExecutionEngineV1},
     execution::ExecError,
 };
 use casper_executor_wasm_common::{chain_utils, flags::ReturnFlags};
@@ -32,7 +30,12 @@ use casper_storage::{
     TrackingCopy,
 };
 use casper_types::{
-    account::AccountHash, addressable_entity::{ActionThresholds, AssociatedKeys}, bytesrepr, AddressableEntity, AddressableEntityHash, ByteCode, ByteCodeAddr, ByteCodeHash, ByteCodeKind, ContractRuntimeTag, Digest, EntityAddr, EntityKind, Gas, Groups, InitiatorAddr, Key, Package, PackageHash, PackageStatus, Phase, ProtocolVersion, StorageCosts, StoredValue, TransactionInvocationTarget, URef, WasmV2Config, U512
+    account::AccountHash,
+    addressable_entity::{ActionThresholds, AssociatedKeys},
+    bytesrepr, AddressableEntity, AddressableEntityHash, ByteCode, ByteCodeAddr, ByteCodeHash,
+    ByteCodeKind, ContractRuntimeTag, Digest, EntityAddr, EntityKind, Gas, Groups, InitiatorAddr,
+    Key, Package, PackageHash, PackageStatus, Phase, ProtocolVersion, StorageCosts, StoredValue,
+    TransactionInvocationTarget, URef, WasmV2Config, U512,
 };
 use either::Either;
 use install::{InstallContractError, InstallContractRequest, InstallContractResult};
@@ -98,7 +101,6 @@ impl ExecutorConfigBuilder {
         self.storage_costs = Some(storage_costs);
         self
     }
-
 
     /// Build the `ExecutorConfig`.
     pub fn build(self) -> Result<ExecutorConfig, &'static str> {
@@ -769,7 +771,7 @@ impl ExecutorV2 {
             config,
             compiled_wasm_engine: Arc::new(wasm_engine),
             execution_stack: Default::default(),
-            execution_engine_v1
+            execution_engine_v1,
         }
     }
 

@@ -14,6 +14,7 @@ use casper_executor_wasm_interface::{
     WasmPreparationError,
 };
 use casper_storage::global_state::GlobalStateReader;
+use casper_types::{HostFunction, HostFunctionCost};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use wasmer::{
@@ -23,7 +24,6 @@ use wasmer::{
 };
 use wasmer_compiler_singlepass::Singlepass;
 use wasmer_middlewares::metering;
-use casper_types::{HostFunction, HostFunctionCost};
 
 use metering_middleware::make_wasmer_metering_middleware;
 
@@ -213,7 +213,7 @@ impl<'a, S: GlobalStateReader + 'static, E: Executor + 'static> Caller for Wasme
     fn has_export(&self, name: &str) -> bool {
         self.with_instance(|instance| instance.exports.contains(name))
     }
-    
+
     fn charge_host_function_call<T>(
         &mut self,
         host_function: &HostFunction<T>,
@@ -223,7 +223,8 @@ impl<'a, S: GlobalStateReader + 'static, E: Executor + 'static> Caller for Wasme
         T: AsRef<[HostFunctionCost]> + Copy,
     {
         let Some(cost) = host_function.calculate_gas_cost(weights) else {
-            return MeteringPoints::Exhausted; // Overflowing gas calculation means gas limit was exceeded
+            return MeteringPoints::Exhausted; // Overflowing gas calculation means gas limit was
+                                              // exceeded
         };
         self.consume_gas(cost.value().as_u64())
     }
@@ -232,11 +233,7 @@ impl<'a, S: GlobalStateReader + 'static, E: Executor + 'static> Caller for Wasme
 impl<S: GlobalStateReader, E: Executor> WasmerEnv<S, E> {}
 
 impl<S: GlobalStateReader, E: Executor> WasmerEnv<S, E> {
-    fn new(
-        context: Context<S, E>,
-        code: Bytes,
-        interface_version: InterfaceVersion,
-    ) -> Self {
+    fn new(context: Context<S, E>, code: Bytes, interface_version: InterfaceVersion) -> Self {
         Self {
             context,
             instance: Weak::new(),
@@ -320,11 +317,7 @@ where
 
         let mut store = Store::new(engine);
 
-        let wasmer_env = WasmerEnv::new(
-            context,
-            wasm_bytes,
-            InterfaceVersion::from(1u32),
-        );
+        let wasmer_env = WasmerEnv::new(context, wasm_bytes, InterfaceVersion::from(1u32));
         let function_env = FunctionEnv::new(&mut store, wasmer_env);
 
         let memory = Memory::new(
