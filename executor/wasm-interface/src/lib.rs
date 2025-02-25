@@ -205,7 +205,7 @@ impl ConfigBuilder {
     /// Gas limit in units.
     pub fn with_gas_limit(mut self, gas_limit: u64) -> Self {
         self.gas_limit = Some(gas_limit);
-        self 
+        self
     }
 
     /// Memory limit denominated in pages.

@@ -18,7 +18,8 @@ pub const DEFAULT_V2_WASM_MAX_MEMORY: u32 = 64;
 
 /// Configuration of the Wasm execution environment for V2 execution machine.
 ///
-/// This structure contains various Wasm execution configuration options, such as memory limits and costs.
+/// This structure contains various Wasm execution configuration options, such as memory limits and
+/// costs.
 #[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Debug)]
 #[cfg_attr(feature = "datasize", derive(DataSize))]
 #[serde(deny_unknown_fields)]
