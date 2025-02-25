@@ -167,7 +167,7 @@ impl ContractRuntime {
 
         let executor_v2 = {
             let executor_config = ExecutorConfigBuilder::default()
-                .with_memory_limit(17)
+                .with_memory_limit(chainspec.wasm_config.v2().max_memory())
                 .with_executor_kind(ExecutorKind::Compiled)
                 .with_wasm_config(*chainspec.wasm_config.v2())
                 .with_storage_costs(chainspec.storage_costs)

@@ -346,8 +346,6 @@ verify_signature = { cost = 1_300_000, arguments = [0, 120_000, 0, 0, 0, 0] }
 [wasm.v2]
 # Amount of free memory each contract can use for stack.
 max_memory = 17
-# Max stack height.
-max_stack_height = 500
 
 [wasm.v2.opcode_costs]
 # Bit operations multiplier.

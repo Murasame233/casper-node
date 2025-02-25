@@ -327,7 +327,6 @@ mod tests {
         );
         let wasm_v2_config = WasmV2Config::new(
             17, // initial_memory
-            19, // max_stack_height
             EXPECTED_GENESIS_COSTS,
             *EXPECTED_GENESIS_HOST_FUNCTION_COSTS_V2,
         );

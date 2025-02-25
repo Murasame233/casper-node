@@ -848,7 +848,6 @@ fn should_verify_wasm_add_bid_wasm_cost_is_not_recursive() {
     );
     let wasm_v2_config = WasmV2Config::new(
         DEFAULT_WASM_MAX_MEMORY,
-        DEFAULT_MAX_STACK_HEIGHT,
         OpcodeCosts::default(),
         HostFunctionCostsV2::default(),
     );

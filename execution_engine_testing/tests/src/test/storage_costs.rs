@@ -104,7 +104,6 @@ static NO_COSTS_WASM_CONFIG: Lazy<WasmConfig> = Lazy::new(|| {
     );
     let wasm_v2_config = WasmV2Config::new(
         DEFAULT_WASM_MAX_MEMORY,
-        DEFAULT_MAX_STACK_HEIGHT,
         NEW_OPCODE_COSTS,
         *NEW_HOST_FUNCTION_COSTS_V2,
     );

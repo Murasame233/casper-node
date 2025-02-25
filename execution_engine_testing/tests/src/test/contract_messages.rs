@@ -493,7 +493,6 @@ fn should_not_exceed_configured_limits() {
         );
         let wasm_v2_config = WasmV2Config::new(
             default_wasm_v2_config.max_memory(),
-            default_wasm_v2_config.max_stack_height(),
             default_wasm_v2_config.opcode_costs(),
             default_wasm_v2_config.take_host_function_costs(),
         );
@@ -672,7 +671,6 @@ fn should_charge_expected_gas_for_storage() {
         );
         let wasm_v2_config = WasmV2Config::new(
             DEFAULT_WASM_MAX_MEMORY,
-            DEFAULT_MAX_STACK_HEIGHT,
             OpcodeCosts::zero(),
             HostFunctionCostsV2::zero(),
         );
@@ -794,7 +792,6 @@ fn should_charge_increasing_gas_consumed_for_multiple_messages_emitted() {
         );
         let wasm_v2_config = WasmV2Config::new(
             DEFAULT_WASM_MAX_MEMORY,
-            DEFAULT_MAX_STACK_HEIGHT,
             OpcodeCosts::zero(),
             HostFunctionCostsV2::default(),
         );
@@ -915,7 +912,6 @@ fn should_not_exceed_configured_topic_name_limits_on_contract_upgrade_no_init() 
         );
         let wasm_v2_config = WasmV2Config::new(
             default_wasm_v2_config.max_memory(),
-            default_wasm_v2_config.max_stack_height(),
             default_wasm_v2_config.opcode_costs(),
             default_wasm_v2_config.take_host_function_costs(),
         );
@@ -959,7 +955,6 @@ fn should_not_exceed_configured_max_topics_per_contract_upgrade_no_init() {
         let default_wasm_v2_config = WasmV2Config::default();
         let wasm_v2_config = WasmV2Config::new(
             default_wasm_v2_config.max_memory(),
-            default_wasm_v2_config.max_stack_height(),
             default_wasm_v2_config.opcode_costs(),
             default_wasm_v2_config.take_host_function_costs(),
         );
@@ -1191,7 +1186,6 @@ fn emit_message_should_consume_variable_gas_based_on_topic_and_message_size() {
         );
         let wasm_v2_config = WasmV2Config::new(
             DEFAULT_WASM_MAX_MEMORY,
-            DEFAULT_MAX_STACK_HEIGHT,
             OpcodeCosts::zero(),
             HostFunctionCostsV2::default(),
         );
