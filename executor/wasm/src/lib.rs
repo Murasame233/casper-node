@@ -32,7 +32,7 @@ use casper_storage::{
     TrackingCopy,
 };
 use casper_types::{
-    account::AccountHash, addressable_entity::{ActionThresholds, AssociatedKeys}, bytesrepr, AddressableEntity, AddressableEntityHash, ByteCode, ByteCodeAddr, ByteCodeHash, ByteCodeKind, ContractRuntimeTag, Digest, EntityAddr, EntityKind, Gas, Groups, InitiatorAddr, Key, Package, PackageHash, PackageStatus, Phase, ProtocolVersion, StoredValue, TransactionInvocationTarget, URef, WasmV2Config, U512
+    account::AccountHash, addressable_entity::{ActionThresholds, AssociatedKeys}, bytesrepr, AddressableEntity, AddressableEntityHash, ByteCode, ByteCodeAddr, ByteCodeHash, ByteCodeKind, ContractRuntimeTag, Digest, EntityAddr, EntityKind, Gas, Groups, InitiatorAddr, Key, Package, PackageHash, PackageStatus, Phase, ProtocolVersion, StorageCosts, StoredValue, TransactionInvocationTarget, URef, WasmV2Config, U512
 };
 use either::Either;
 use install::{InstallContractError, InstallContractRequest, InstallContractResult};
@@ -57,6 +57,7 @@ pub struct ExecutorConfig {
     memory_limit: u32,
     executor_kind: ExecutorKind,
     wasm_config: WasmV2Config,
+    storage_costs: StorageCosts,
 }
 
 impl ExecutorConfigBuilder {
@@ -70,6 +71,7 @@ pub struct ExecutorConfigBuilder {
     memory_limit: Option<u32>,
     executor_kind: Option<ExecutorKind>,
     wasm_config: Option<WasmV2Config>,
+    storage_costs: Option<StorageCosts>,
 }
 
 impl ExecutorConfigBuilder {
@@ -91,16 +93,25 @@ impl ExecutorConfigBuilder {
         self
     }
 
+    /// Set the wasm config.
+    pub fn with_storage_costs(mut self, storage_costs: StorageCosts) -> Self {
+        self.storage_costs = Some(storage_costs);
+        self
+    }
+
+
     /// Build the `ExecutorConfig`.
     pub fn build(self) -> Result<ExecutorConfig, &'static str> {
         let memory_limit = self.memory_limit.ok_or("Memory limit is not set")?;
         let executor_kind = self.executor_kind.ok_or("Executor kind is not set")?;
         let wasm_config = self.wasm_config.ok_or("Wasm config is not set")?;
+        let storage_costs = self.storage_costs.ok_or("Storage costs are not set")?;
 
         Ok(ExecutorConfig {
             memory_limit,
             executor_kind,
             wasm_config,
+            storage_costs,
         })
     }
 }
@@ -515,6 +526,7 @@ impl ExecutorV2 {
         let context = Context {
             initiator,
             config: self.config.wasm_config,
+            storage_costs: self.config.storage_costs,
             caller: caller_key,
             callee: callee_key,
             transferred_value,

@@ -43,11 +43,11 @@ const VM2_HARNESS: Bytes = Bytes::from_static(include_bytes!("../vm2-harness.was
 const VM2_CEP18: Bytes = Bytes::from_static(include_bytes!("../vm2_cep18.wasm"));
 const VM2_LEGACY_COUNTER_PROXY: Bytes =
     Bytes::from_static(include_bytes!("../vm2_legacy_counter_proxy.wasm"));
-//const VM2_CEP18_CALLER: Bytes = Bytes::from_static(include_bytes!("../vm2-cep18-caller.wasm"));
+// const VM2_CEP18_CALLER: Bytes = Bytes::from_static(include_bytes!("../vm2-cep18-caller.wasm"));
 const VM2_TRAIT: Bytes = Bytes::from_static(include_bytes!("../vm2_trait.wasm"));
 // const VM2_FLIPPER: Bytes = Bytes::from_static(include_bytes!("../vm2_flipper.wasm"));
-const VM2_UPGRADABLE: Bytes = Bytes::from_static(include_bytes!("../vm2_upgradable.wasm"));
-//const VM2_UPGRADABLE_V2: Bytes = Bytes::from_static(include_bytes!("../vm2_upgradable_v2.wasm"));
+// const VM2_UPGRADABLE: Bytes = Bytes::from_static(include_bytes!("../vm2_upgradable.wasm"));
+// const VM2_UPGRADABLE_V2: Bytes = Bytes::from_static(include_bytes!("../vm2_upgradable_v2.wasm"));
 
 const VM2_HOST: Bytes = Bytes::from_static(include_bytes!("../vm2_host.wasm"));
 
@@ -161,6 +161,7 @@ pub(crate) fn make_executor() -> ExecutorV2 {
         .with_memory_limit(17)
         .with_executor_kind(ExecutorKind::Compiled)
         .with_wasm_config(WasmV2Config::default())
+        .with_storage_costs(StorageCosts::default())
         .build()
         .expect("Should build");
     ExecutorV2::new(executor_config, Arc::new(execution_engine_v1))
@@ -673,6 +674,7 @@ fn call_dummy_host_fn_by_name(host_function_name: &str, gas_limit: u64) -> Resul
             .with_memory_limit(17)
             .with_executor_kind(ExecutorKind::Compiled)
             .with_wasm_config(wasm_config)
+            .with_storage_costs(StorageCosts::default())
             .build()
             .expect("Should build");
         ExecutorV2::new(executor_config, Arc::new(execution_engine_v1))
@@ -730,4 +732,79 @@ fn host_functions_consume_gas() {
     assert_consumes_gas("transfer");
     assert_consumes_gas("upgrade");
     assert_consumes_gas("write");
+}
+
+fn write_n_bytes_at_limit(bytes_len: u64, gas_limit: u64) -> Result<InstallContractResult, InstallContractError> {
+    let executor = {
+        let execution_engine_v1 = ExecutionEngineV1::default();
+        let default_wasm_config = WasmV2Config::default();
+        let wasm_config = WasmV2Config::new(
+            default_wasm_config.max_memory(),
+            default_wasm_config.max_stack_height(),
+            default_wasm_config.opcode_costs(),
+            HostFunctionCostsV2 {
+                read: HostFunction::fixed(0),
+                write: HostFunction::fixed(0),
+                copy_input: HostFunction::fixed(0),
+                ret: HostFunction::fixed(0),
+                create: HostFunction::fixed(0),
+                env_caller: HostFunction::fixed(0),
+                env_block_time: HostFunction::fixed(0),
+                env_transferred_value: HostFunction::fixed(0),
+                transfer: HostFunction::fixed(0),
+                env_balance: HostFunction::fixed(0),
+                upgrade: HostFunction::fixed(0),
+                call: HostFunction::fixed(0),
+                print: HostFunction::fixed(0),
+            },
+        );
+        let executor_config = ExecutorConfigBuilder::default()
+            .with_memory_limit(17)
+            .with_executor_kind(ExecutorKind::Compiled)
+            .with_wasm_config(wasm_config)
+            .with_storage_costs(StorageCosts::new(1))
+            .build()
+            .expect("Should build");
+        ExecutorV2::new(executor_config, Arc::new(execution_engine_v1))
+    };
+
+    let (mut global_state, state_root_hash, _tempdir) = make_global_state_with_genesis();
+
+    let address_generator = make_address_generator();
+
+    let input_data = borsh::to_vec(&(bytes_len,))
+        .map(Bytes::from)
+        .unwrap();
+
+    let create_request = InstallContractRequestBuilder::default()
+        .with_initiator(*DEFAULT_ACCOUNT_HASH)
+        .with_gas_limit(gas_limit)
+        .with_transaction_hash(TRANSACTION_HASH)
+        .with_wasm_bytes(VM2_HOST.clone())
+        .with_shared_address_generator(Arc::clone(&address_generator))
+        .with_transferred_value(0)
+        .with_entry_point("new_with_write".to_string())
+        .with_input(input_data)
+        .with_chain_name(DEFAULT_CHAIN_NAME)
+        .with_block_time(Timestamp::now().into())
+        .with_state_hash(Digest::from_raw([0; 32]))
+        .with_block_height(1)
+        .with_parent_block_hash(BlockHash::new(Digest::from_raw([0; 32])))
+        .build()
+        .expect("should build");
+
+    executor
+        .install_contract(state_root_hash, &mut global_state, create_request)
+}
+
+#[test]
+fn consume_gas_on_write() {
+    let successful_write = write_n_bytes_at_limit(50, 10_000);
+    assert!(successful_write.is_ok());
+
+    let out_of_gas_write_exceeded_gas_limit = write_n_bytes_at_limit(50, 10);
+    assert!(out_of_gas_write_exceeded_gas_limit.is_err_and(|e| match e {
+        InstallContractError::Constructor { host_error: HostError::CalleeGasDepleted } => true,
+        _ => false
+    }));
 }

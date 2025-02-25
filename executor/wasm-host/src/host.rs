@@ -20,6 +20,7 @@ use casper_storage::{
     tracking_copy::{TrackingCopyEntityExt, TrackingCopyError, TrackingCopyExt},
 };
 
+use casper_types::bytesrepr::ToBytes;
 use casper_types::{
     account::AccountHash,
     addressable_entity::{ActionThresholds, AssociatedKeys, NamedKeyAddr},
@@ -44,6 +45,21 @@ use crate::abi::ReadInfo;
 enum EntityKindTag {
     Account = 0,
     Contract = 1,
+}
+
+fn tracking_copy_write_and_charge<S: GlobalStateReader, E: Executor>(
+    caller: &mut impl Caller<Context = Context<S, E>>,
+    key: Key,
+    value: StoredValue
+) {
+    let storage_costs = &caller.context().storage_costs;
+    let gas_cost = storage_costs.calculate_gas_cost(value.serialized_length());
+    caller.consume_gas(gas_cost.value().as_u64());
+
+    caller.context_mut().tracking_copy.write(
+        key,
+        value,
+    );
 }
 
 /// Write value under a key.
@@ -145,10 +161,11 @@ pub fn casper_write<S: GlobalStateReader, E: Executor>(
         }
     };
 
-    caller
-        .context_mut()
-        .tracking_copy
-        .write(global_state_key, stored_value);
+    tracking_copy_write_and_charge(
+        &mut caller,
+        global_state_key,
+        stored_value
+    );
 
     Ok(0)
 }
@@ -504,16 +521,17 @@ pub fn casper_create<S: GlobalStateReader + 'static, E: Executor + 'static>(
         "TODO: Check if the contract already exists and fail"
     );
 
-    caller.context_mut().tracking_copy.write(
+    tracking_copy_write_and_charge(
+        &mut caller,
         Key::SmartContract(smart_contract_addr),
-        StoredValue::SmartContract(smart_contract_package),
+        StoredValue::SmartContract(smart_contract_package)
     );
 
     // 2. Store wasm
-
-    caller.context_mut().tracking_copy.write(
+    tracking_copy_write_and_charge(
+        &mut caller,
         Key::ByteCode(bytecode_addr),
-        StoredValue::ByteCode(bytecode),
+        StoredValue::ByteCode(bytecode)
     );
 
     // 3. Store addressable entity
@@ -551,9 +569,10 @@ pub fn casper_create<S: GlobalStateReader + 'static, E: Executor + 'static>(
         EntityKind::SmartContract(ContractRuntimeTag::VmCasperV2),
     );
 
-    caller.context_mut().tracking_copy.write(
+    tracking_copy_write_and_charge(
+        &mut caller,
         addressable_entity_key,
-        StoredValue::AddressableEntity(addressable_entity),
+        StoredValue::AddressableEntity(addressable_entity)
     );
 
     let _initial_state = match constructor_entry_point {
@@ -1221,12 +1240,13 @@ pub fn casper_upgrade<S: GlobalStateReader + 'static, E: Executor>(
     let bytecode_key = Key::ByteCode(ByteCodeAddr::V2CasperWasm(
         callee_addressable_entity.byte_code_addr(),
     ));
-    caller.context_mut().tracking_copy.write(
+    tracking_copy_write_and_charge(
+        &mut caller,
         bytecode_key,
         StoredValue::ByteCode(ByteCode::new(
             ByteCodeKind::V2CasperWasm,
             code.clone().into(),
-        )),
+        ))
     );
 
     // 3. Execute upgrade routine (if specified)

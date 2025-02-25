@@ -39,8 +39,16 @@ impl MinHostWrapper {
             "transfer" => { ret.transfer(); }
             "upgrade" => { ret.upgrade(); }
             "write" => { ret.write(); }
+            "write_n_bytes" => { ret.write(); }
             _ => panic!("Unknown host function")
         }
+        ret
+    }
+
+    #[casper(constructor)]
+    pub fn new_with_write(byte_count: u64) -> Self {
+        let ret = Self;
+        ret.write_n_bytes(byte_count);
         ret
     }
 
@@ -103,5 +111,10 @@ impl MinHostWrapper {
 
     pub fn write(&self) {
         host::casper_write(Keyspace::Context(&[]), &[]).ok();
+    }
+
+    pub fn write_n_bytes(&self, n: u64) {
+        let buffer = vec![0; n as usize];
+        host::casper_write(Keyspace::Context(&[0]), &buffer).ok();
     }
 }

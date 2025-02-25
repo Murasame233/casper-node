@@ -3,7 +3,7 @@ use std::sync::Arc;
 use bytes::Bytes;
 use casper_executor_wasm_interface::executor::Executor;
 use casper_storage::{global_state::GlobalStateReader, AddressGenerator, TrackingCopy};
-use casper_types::{account::AccountHash, BlockTime, Key, TransactionHash, WasmV2Config};
+use casper_types::{account::AccountHash, BlockTime, Key, StorageCosts, TransactionHash, WasmV2Config};
 use parking_lot::RwLock;
 
 /// Container that holds all relevant modules necessary to process an execution request.
@@ -21,6 +21,7 @@ pub struct Context<S: GlobalStateReader, E: Executor> {
     /// The amount of tokens that were send to the contract's purse at the time of the call.
     pub transferred_value: u128,
     pub config: WasmV2Config,
+    pub storage_costs: StorageCosts,
     pub tracking_copy: TrackingCopy<S>,
     pub executor: E, // TODO: This could be part of the caller
     pub transaction_hash: TransactionHash,

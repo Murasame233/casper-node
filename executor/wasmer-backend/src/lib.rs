@@ -755,6 +755,7 @@ where
             caller: data.context.caller,
             callee: data.context.callee,
             config: data.context.config,
+            storage_costs: data.context.storage_costs,
             transferred_value: data.context.transferred_value,
             tracking_copy: data.context.tracking_copy.fork2(),
             executor: data.context.executor.clone(),
