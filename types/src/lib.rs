@@ -132,7 +132,7 @@ pub use chainspec::{
     MessageLimits, MintCosts, NetworkConfig, NextUpgrade, OpcodeCosts, PricingHandling,
     ProtocolConfig, ProtocolUpgradeConfig, RefundHandling, StandardPaymentCosts, StorageCosts,
     SystemConfig, TransactionConfig, TransactionLaneDefinition, TransactionV1Config, VacancyConfig,
-    ValidatorConfig, WasmConfig, WasmV1Config, DEFAULT_BASELINE_MOTES_AMOUNT,
+    ValidatorConfig, WasmConfig, WasmV1Config, WasmV2Config, DEFAULT_BASELINE_MOTES_AMOUNT,
     DEFAULT_GAS_HOLD_INTERVAL, DEFAULT_HOST_FUNCTION_NEW_DICTIONARY, DEFAULT_MINIMUM_BID_AMOUNT,
     DEFAULT_REFUND_HANDLING,
 };
