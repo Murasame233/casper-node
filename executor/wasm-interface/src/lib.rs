@@ -247,7 +247,6 @@ impl MeteringPoints {
 ///
 /// This allows access for important instances such as the context object that was passed to the
 /// instance, wasm linear memory access, etc.
-
 pub trait Caller {
     type Context;
 

@@ -260,7 +260,7 @@ impl EraSupervisor {
 
     fn era_seed(booking_block_hash: BlockHash, key_block_seed: Digest) -> u64 {
         let result = Digest::hash_pair(booking_block_hash, key_block_seed).value();
-        u64::from_le_bytes(result[0..std::mem::size_of::<u64>()].try_into().unwrap())
+        u64::from_le_bytes(result[0..size_of::<u64>()].try_into().unwrap())
     }
 
     /// Returns an iterator over era IDs of `num_eras` past eras, plus the provided one.
@@ -554,7 +554,7 @@ impl EraSupervisor {
         let our_id = self.validator_matrix.public_signing_key().clone();
         if self
             .current_era()
-            .map_or(false, |current_era| current_era > era_id)
+            .is_some_and(|current_era| current_era > era_id)
         {
             trace!(
                 era = era_id.value(),
@@ -835,7 +835,7 @@ impl EraSupervisor {
 
         if self
             .current_era()
-            .map_or(true, |current_era| era_id < current_era)
+            .is_none_or(|current_era| era_id < current_era)
         {
             trace!(era = era_id.value(), "executed block in old era");
             return effects;
@@ -930,7 +930,7 @@ impl EraSupervisor {
         if self
             .open_eras
             .get_mut(&era_id)
-            .map_or(false, |era| era.resolve_validity(&proposed_block, valid))
+            .is_some_and(|era| era.resolve_validity(&proposed_block, valid))
         {
             effects.extend(
                 self.delegate_to_era(effect_builder, rng, era_id, |consensus, _| {
@@ -1526,7 +1526,6 @@ impl ProposedBlock<ClContext> {
             .iter()
             .flat_map(|ancestor| ancestor.all_transaction_hashes())
             .find(|typed_txn_hash| block_txns_set.contains(typed_txn_hash))
-            .map(TransactionHash::from)
     }
 }
 
