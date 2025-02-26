@@ -2796,7 +2796,7 @@ where
                 }
             }
 
-            let main_purse = if !requires_purse_creation {
+            let main_purse = if requires_purse_creation {
                 self.create_purse()?
             } else {
                 previous_entity.main_purse()
