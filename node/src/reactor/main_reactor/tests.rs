@@ -3278,7 +3278,7 @@ async fn run_gas_price_scenario(gas_price_scenario: GasPriceScenario) {
         .expect("must have gas price");
 
     let cost = match fixture.chainspec.core_config.pricing_handling {
-        PricingHandling::Classic => 0,
+        PricingHandling::PaymentLimited => 0,
         PricingHandling::Fixed => {
             fixture.chainspec.system_costs_config.mint_costs().transfer * (current_gas_price as u32)
         }

@@ -366,8 +366,13 @@ impl MetaTransactionV1 {
 
                 match self.pricing_mode {
                     PricingMode::PaymentLimited {
-                        standard_payment, ..
+                        standard_payment,
+                        payment_amount,
+                        ..
                     } => {
+                        if payment_amount == 0u64 {
+                            return Err(InvalidTransactionV1::InvalidPaymentAmount);
+                        }
                         if !standard_payment {
                             // V2 runtime expects standard payment in the payment limited mode.
                             return Err(InvalidTransactionV1::InvalidPricingMode {
@@ -417,7 +422,7 @@ impl MetaTransactionV1 {
 
         match pricing_mode {
             PricingMode::PaymentLimited { .. } => {
-                if let PricingHandling::Classic = price_handling {
+                if let PricingHandling::PaymentLimited = price_handling {
                 } else {
                     return Err(InvalidTransactionV1::InvalidPricingMode {
                         price_mode: pricing_mode.clone(),

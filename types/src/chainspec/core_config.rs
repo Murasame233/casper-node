@@ -269,7 +269,7 @@ impl CoreConfig {
         };
 
         let pricing_handling = if rng.gen() {
-            PricingHandling::Classic
+            PricingHandling::PaymentLimited
         } else {
             PricingHandling::Fixed
         };
