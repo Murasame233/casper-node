@@ -361,7 +361,7 @@ impl ExecutionArtifactBuilder {
             size_estimate: self.size_estimate,
             error_message: self.error_message,
         };
-        let execution_result = ExecutionResult::V2(result);
+        let execution_result = ExecutionResult::V2(Box::new(result));
         ExecutionArtifact::new(self.hash, self.header, execution_result, self.messages)
     }
 
@@ -447,7 +447,7 @@ pub struct BlockAndExecutionArtifacts {
 #[derive(Debug)]
 pub enum SpeculativeExecutionResult {
     InvalidTransaction(InvalidTransaction),
-    WasmV1(casper_binary_port::SpeculativeExecutionResult),
+    WasmV1(Box<casper_binary_port::SpeculativeExecutionResult>),
     ReceivedV1Transaction,
 }
 

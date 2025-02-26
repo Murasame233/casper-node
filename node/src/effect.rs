@@ -402,7 +402,7 @@ pub(crate) trait EffectResultExt {
         U: 'static;
 }
 
-impl<T: ?Sized> EffectExt for T
+impl<T> EffectExt for T
 where
     T: Future + Send + 'static + Sized,
 {
@@ -422,7 +422,6 @@ where
 impl<T, V, E> EffectResultExt for T
 where
     T: Future<Output = Result<V, E>> + Send + 'static + Sized,
-    T: ?Sized,
 {
     type Value = V;
     type Error = E;

@@ -1333,11 +1333,11 @@ where
                 authorization_keys,
                 runtime_args,
             ));
-            SpeculativeExecutionResult::WasmV1(utils::spec_exec_from_transfer_result(
+            SpeculativeExecutionResult::WasmV1(Box::new(utils::spec_exec_from_transfer_result(
                 limit,
                 result,
                 block_header.block_hash(),
-            ))
+            )))
         } else {
             let block_info = BlockInfo::new(
                 *state_root_hash,
@@ -1354,10 +1354,10 @@ where
                     }
                     Err(error) => WasmV1Result::invalid_executable_item(gas_limit, error),
                 };
-            SpeculativeExecutionResult::WasmV1(utils::spec_exec_from_wasm_v1_result(
+            SpeculativeExecutionResult::WasmV1(Box::new(utils::spec_exec_from_wasm_v1_result(
                 wasm_v1_result,
                 block_header.block_hash(),
-            ))
+            )))
         }
     } else {
         SpeculativeExecutionResult::ReceivedV1Transaction

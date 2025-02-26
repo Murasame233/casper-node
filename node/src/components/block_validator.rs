@@ -425,7 +425,7 @@ impl BlockValidator {
         while self
             .requests_on_hold
             .first_key_value()
-            .map_or(false, |(height, _)| *height <= stored_block_height)
+            .is_some_and(|(height, _)| *height <= stored_block_height)
         {
             // unwrap is safe - we'd break the loop if there were no elements
             pending_requests.extend(self.requests_on_hold.pop_first().unwrap().1);
