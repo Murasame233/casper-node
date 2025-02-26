@@ -126,7 +126,7 @@ pub(crate) mod entry_point {
     #[cfg_attr(
         feature = "json-schema",
         schemars(
-            rename = "EntryPointType",
+            rename = "ContractEntryPointType",
             description = "Type signature of a contract method."
         )
     )]
@@ -166,7 +166,7 @@ pub(crate) mod entry_point {
     #[cfg_attr(
         feature = "json-schema",
         schemars(
-            rename = "EntryPoint",
+            rename = "ContractEntryPoint",
             description = "Type signature of a contract method."
         )
     )]
