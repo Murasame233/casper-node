@@ -652,13 +652,13 @@ async fn failed_transfer_cost_fixed_price_no_fee_no_refund() {
 }
 
 #[tokio::test]
-async fn transfer_cost_classic_price_no_fee_no_refund() {
+async fn transfer_cost_payment_limited_price_no_fee_no_refund() {
     const TRANSFER_AMOUNT: u64 = 30_000_000_000;
 
     let initial_stakes = InitialStakes::FromVec(vec![u128::MAX, 1]);
 
     let config = SingleTransactionTestCase::default_test_config()
-        .with_pricing_handling(PricingHandling::Classic)
+        .with_pricing_handling(PricingHandling::PaymentLimited)
         .with_refund_handling(RefundHandling::NoRefund)
         .with_fee_handling(FeeHandling::NoFee);
 
@@ -771,7 +771,7 @@ async fn transaction_with_low_threshold_should_not_get_included() {
     let initial_stakes = InitialStakes::FromVec(vec![u128::MAX, 1]);
 
     let config = SingleTransactionTestCase::default_test_config()
-        .with_pricing_handling(PricingHandling::Classic)
+        .with_pricing_handling(PricingHandling::PaymentLimited)
         .with_refund_handling(RefundHandling::NoRefund)
         .with_fee_handling(FeeHandling::NoFee);
 
@@ -1317,7 +1317,7 @@ async fn wasm_transaction_refunds_are_burnt_fixed_pricing() {
 }
 
 #[tokio::test]
-async fn wasm_transaction_refunds_are_burnt_classic_pricing() {
+async fn wasm_transaction_refunds_are_burnt_payment_limited_pricing() {
     wasm_transaction_refunds_are_burnt(PricingMode::PaymentLimited {
         payment_amount: 5000,
         gas_price_tolerance: MIN_GAS_PRICE,
@@ -1416,7 +1416,7 @@ async fn only_refunds_are_burnt_no_fee_fixed_pricing() {
 }
 
 #[tokio::test]
-async fn only_refunds_are_burnt_no_fee_classic_pricing() {
+async fn only_refunds_are_burnt_no_fee_payment_limited_pricing() {
     only_refunds_are_burnt_no_fee(PricingMode::PaymentLimited {
         payment_amount: 5_000_000_000,
         gas_price_tolerance: MIN_GAS_PRICE,
@@ -1510,7 +1510,7 @@ async fn fees_and_refunds_are_burnt_separately_fixed_pricing() {
 }
 
 #[tokio::test]
-async fn fees_and_refunds_are_burnt_separately_classic_pricing() {
+async fn fees_and_refunds_are_burnt_separately_payment_limited_pricing() {
     fees_and_refunds_are_burnt_separately(PricingMode::PaymentLimited {
         payment_amount: 5000,
         gas_price_tolerance: MIN_GAS_PRICE,
@@ -1612,7 +1612,7 @@ async fn refunds_are_payed_and_fees_are_burnt_fixed_pricing() {
 }
 
 #[tokio::test]
-async fn refunds_are_payed_and_fees_are_burnt_classic_pricing() {
+async fn refunds_are_payed_and_fees_are_burnt_payment_limited_pricing() {
     refunds_are_payed_and_fees_are_burnt(PricingMode::PaymentLimited {
         payment_amount: 5000,
         gas_price_tolerance: MIN_GAS_PRICE,
@@ -1720,7 +1720,7 @@ async fn refunds_are_payed_and_fees_are_on_hold_fixed_pricing() {
 }
 
 #[tokio::test]
-async fn refunds_are_payed_and_fees_are_on_hold_classic_pricing() {
+async fn refunds_are_payed_and_fees_are_on_hold_payment_limited_pricing() {
     refunds_are_payed_and_fees_are_on_hold(PricingMode::PaymentLimited {
         payment_amount: 5000,
         gas_price_tolerance: MIN_GAS_PRICE,
@@ -1733,7 +1733,7 @@ async fn refunds_are_payed_and_fees_are_on_hold_classic_pricing() {
 async fn only_refunds_are_burnt_no_fee_custom_payment() {
     let refund_ratio = Ratio::new(1, 2);
     let config = SingleTransactionTestCase::default_test_config()
-        .with_pricing_handling(PricingHandling::Classic)
+        .with_pricing_handling(PricingHandling::PaymentLimited)
         .with_refund_handling(RefundHandling::Refund { refund_ratio })
         .with_fee_handling(FeeHandling::Burn);
 
@@ -1834,7 +1834,7 @@ async fn only_refunds_are_burnt_no_fee_custom_payment() {
 #[tokio::test]
 async fn no_refund_no_fee_custom_payment() {
     let config = SingleTransactionTestCase::default_test_config()
-        .with_pricing_handling(PricingHandling::Classic)
+        .with_pricing_handling(PricingHandling::PaymentLimited)
         .with_refund_handling(RefundHandling::NoRefund)
         .with_fee_handling(FeeHandling::NoFee);
 
@@ -2036,7 +2036,7 @@ async fn transfer_fee_is_burnt_no_refund_fixed_pricing() {
 }
 
 #[tokio::test]
-async fn transfer_fee_is_burnt_no_refund_classic_pricing() {
+async fn transfer_fee_is_burnt_no_refund_payment_limited_pricing() {
     transfer_fee_is_burnt_no_refund(PricingMode::PaymentLimited {
         payment_amount: 5000,
         gas_price_tolerance: MIN_GAS_PRICE,
@@ -2147,7 +2147,7 @@ async fn fee_is_payed_to_proposer_no_refund_fixed_pricing() {
 }
 
 #[tokio::test]
-async fn fee_is_payed_to_proposer_no_refund_classic_pricing() {
+async fn fee_is_payed_to_proposer_no_refund_payment_limited_pricing() {
     fee_is_payed_to_proposer_no_refund(PricingMode::PaymentLimited {
         payment_amount: 5000,
         gas_price_tolerance: MIN_GAS_PRICE,
@@ -2246,7 +2246,7 @@ async fn wasm_transaction_fees_are_refunded_to_proposer_fixed_pricing() {
 }
 
 #[tokio::test]
-async fn wasm_transaction_fees_are_refunded_to_proposer_classic_pricing() {
+async fn wasm_transaction_fees_are_refunded_to_proposer_payment_limited_pricing() {
     wasm_transaction_fees_are_refunded_to_proposer(PricingMode::PaymentLimited {
         payment_amount: 5000,
         gas_price_tolerance: MIN_GAS_PRICE,
@@ -2385,7 +2385,7 @@ async fn fee_is_accumulated_and_distributed_no_refund_fixed_pricing() {
 }
 
 #[tokio::test]
-async fn fee_is_accumulated_and_distributed_no_refund_classic_pricing() {
+async fn fee_is_accumulated_and_distributed_no_refund_payment_limited_pricing() {
     fee_is_accumulated_and_distributed_no_refund(PricingMode::PaymentLimited {
         payment_amount: 5000,
         gas_price_tolerance: MIN_GAS_PRICE,
@@ -2442,7 +2442,7 @@ fn match_pricing_mode(txn_pricing_mode: &PricingMode) -> (PricingHandling, u8, O
             payment_amount,
             ..
         } => (
-            PricingHandling::Classic,
+            PricingHandling::PaymentLimited,
             *gas_price_tolerance,
             Some(*payment_amount),
         ),
@@ -2464,7 +2464,7 @@ async fn holds_should_be_added_and_cleared_fixed_pricing() {
 }
 
 #[tokio::test]
-async fn holds_should_be_added_and_cleared_classic_pricing() {
+async fn holds_should_be_added_and_cleared_payment_limited_pricing() {
     holds_should_be_added_and_cleared(PricingMode::PaymentLimited {
         payment_amount: 5000,
         gas_price_tolerance: MIN_GAS_PRICE,
@@ -3035,7 +3035,7 @@ async fn insufficient_funds_transfer_from_account() {
             .unwrap();
     let price = txn_v1
         .payment_amount()
-        .expect("must have payment amount as txns are using classic");
+        .expect("must have payment amount as txns are using payment_limited");
     let mut txn = Transaction::from(txn_v1);
     txn.sign(&BOB_SECRET_KEY);
 
@@ -3965,7 +3965,7 @@ async fn gas_holds_accumulate_for_multiple_transactions_in_the_same_block() {
 #[tokio::test]
 async fn gh_5058_regression_custom_payment_with_deploy_variant_works() {
     let config = SingleTransactionTestCase::default_test_config()
-        .with_pricing_handling(PricingHandling::Classic)
+        .with_pricing_handling(PricingHandling::PaymentLimited)
         .with_refund_handling(RefundHandling::NoRefund)
         .with_fee_handling(FeeHandling::NoFee);
 
@@ -4038,7 +4038,7 @@ async fn gh_5058_regression_custom_payment_with_deploy_variant_works() {
 #[tokio::test]
 async fn should_penalize_failed_custom_payment() {
     let config = SingleTransactionTestCase::default_test_config()
-        .with_pricing_handling(PricingHandling::Classic)
+        .with_pricing_handling(PricingHandling::PaymentLimited)
         .with_refund_handling(RefundHandling::NoRefund)
         .with_fee_handling(FeeHandling::NoFee);
 
@@ -4118,7 +4118,7 @@ async fn should_penalize_failed_custom_payment() {
 #[tokio::test]
 async fn gh_5082_install_upgrade_should_allow_adding_new_version() {
     let config = SingleTransactionTestCase::default_test_config()
-        .with_pricing_handling(PricingHandling::Classic)
+        .with_pricing_handling(PricingHandling::PaymentLimited)
         .with_refund_handling(RefundHandling::NoRefund)
         .with_fee_handling(FeeHandling::NoFee);
 
@@ -4209,7 +4209,7 @@ async fn gh_5082_install_upgrade_should_allow_adding_new_version() {
 #[tokio::test]
 async fn should_allow_custom_payment() {
     let config = SingleTransactionTestCase::default_test_config()
-        .with_pricing_handling(PricingHandling::Classic)
+        .with_pricing_handling(PricingHandling::PaymentLimited)
         .with_refund_handling(RefundHandling::NoRefund)
         .with_fee_handling(FeeHandling::NoFee);
 
