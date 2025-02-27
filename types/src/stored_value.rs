@@ -1138,14 +1138,14 @@ mod tests {
                     "args": [],
                     "ret": "I32",
                     "access": "Public",
-                    "entry_point_type": "Session"
+                    "entry_point_type": "Caller"
                 },
                 {
                     "name": "counter_inc",
                     "args": [],
                     "ret": "Unit",
                     "access": "Public",
-                    "entry_point_type": "Contract"
+                    "entry_point_type": "Called"
                 },
                 {
                     "name": "counter_zero",
@@ -1177,14 +1177,14 @@ mod tests {
                         "args": [],
                         "ret": "I32",
                         "access": "Public",
-                        "entry_point_type": "Session"
+                        "entry_point_type": "Caller"
                     },
                     {
                         "name": "counter_get",
                         "args": [],
                         "ret": "Unit",
                         "access": "Public",
-                        "entry_point_type": "Contract"
+                        "entry_point_type": "Called"
                     },
                     {
                         "name": "counter_inc",
