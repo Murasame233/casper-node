@@ -584,15 +584,15 @@ impl TestScenario {
                 }
             }
             TestScenario::InvalidPricingModeForTransactionV1 => {
-                let classic_mode_transaction = TransactionV1Builder::new_random(rng)
+                let payment_limited_mode_transaction = TransactionV1Builder::new_random(rng)
                     .with_pricing_mode(PricingMode::Fixed {
                         gas_price_tolerance: 5,
                         additional_computation_factor: 0,
                     })
                     .with_chain_name("casper-example")
                     .build()
-                    .expect("must create classic mode transaction");
-                Transaction::from(classic_mode_transaction)
+                    .expect("must create payment limited transaction");
+                Transaction::from(payment_limited_mode_transaction)
             }
             TestScenario::TooLowGasPriceToleranceForTransactionV1 => {
                 const TOO_LOW_GAS_PRICE_TOLERANCE: u8 = 0;
