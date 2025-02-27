@@ -281,7 +281,7 @@ impl TransactionV1 {
         self.approvals.extend(approvals);
     }
 
-    /// Returns the payment amount if the txn is using classic mode.
+    /// Returns the payment amount if the txn is using payment limited mode.
     #[cfg(any(all(feature = "std", feature = "testing"), test))]
     pub fn payment_amount(&self) -> Option<u64> {
         if let PricingMode::PaymentLimited { payment_amount, .. } = self.pricing_mode() {

@@ -425,17 +425,11 @@ mod tests {
 
     #[test]
     fn test_to_bytes_and_from_bytes() {
-        let classic = PricingMode::PaymentLimited {
+        bytesrepr::test_serialization_roundtrip(&PricingMode::PaymentLimited {
             payment_amount: 100,
             gas_price_tolerance: 1,
             standard_payment: true,
-        };
-        match classic {
-            PricingMode::PaymentLimited { .. } => {}
-            PricingMode::Fixed { .. } => {}
-            PricingMode::Prepaid { .. } => {}
-        }
-        bytesrepr::test_serialization_roundtrip(&classic);
+        });
         bytesrepr::test_serialization_roundtrip(&PricingMode::Fixed {
             gas_price_tolerance: 2,
             additional_computation_factor: 1,

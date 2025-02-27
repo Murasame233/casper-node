@@ -1071,7 +1071,7 @@ fn node_has_lowest_available_block_at_or_below_height(
     node_id: NodeId,
 ) -> impl Fn(&Nodes) -> bool {
     move |nodes: &Nodes| {
-        nodes.get(&node_id).map_or(true, |runner| {
+        nodes.get(&node_id).is_none_or(|runner| {
             let available_block_range = runner.main_reactor().storage().get_available_block_range();
             if available_block_range.low() == 0 && available_block_range.high() == 0 {
                 false
@@ -3278,7 +3278,7 @@ async fn run_gas_price_scenario(gas_price_scenario: GasPriceScenario) {
         .expect("must have gas price");
 
     let cost = match fixture.chainspec.core_config.pricing_handling {
-        PricingHandling::Classic => 0,
+        PricingHandling::PaymentLimited => 0,
         PricingHandling::Fixed => {
             fixture.chainspec.system_costs_config.mint_costs().transfer * (current_gas_price as u32)
         }
