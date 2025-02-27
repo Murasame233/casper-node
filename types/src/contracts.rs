@@ -992,11 +992,7 @@ impl From<ContractPackage> for Package {
 /// referenced by index as well as name.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "datasize", derive(DataSize))]
-#[cfg_attr(
-    feature = "json-schema",
-    derive(JsonSchema),
-    schemars(with = "serde_helpers::entry_point::HumanReadableEntryPoint")
-)]
+#[cfg_attr(feature = "json-schema", derive(JsonSchema))]
 pub struct EntryPoint {
     name: String,
     args: Parameters,

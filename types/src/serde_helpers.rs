@@ -116,58 +116,13 @@ pub(crate) mod entry_point {
 
     use crate::{contracts::EntryPoint, CLType, EntryPointAccess, EntryPointType, Parameters};
 
-    /*
-    This type exists to provide retro-compat for json representation of [`EntryPointType`] enum.
-    The variants of this enum changed names in 2.x, but it also existed in 1.x. So for
-    [`contract::EntryPoint`] we want to still json-serialize the variants as in 1.x.
-     */
-    #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
-    #[cfg_attr(feature = "json-schema", derive(JsonSchema))]
-    #[cfg_attr(
-        feature = "json-schema",
-        schemars(
-            rename = "ContractEntryPointType",
-            description = "Type signature of a contract method."
-        )
-    )]
-    pub(crate) enum HumanReadableEntryPointType {
-        /// Runs as session code
-        Session,
-        /// Runs within contract's context
-        Contract,
-        /// Entry point type that installs
-        /// wasm as new contracts. Runs using
-        /// the called entity's context.
-        Factory,
-    }
-
-    impl From<EntryPointType> for HumanReadableEntryPointType {
-        fn from(value: EntryPointType) -> Self {
-            match value {
-                EntryPointType::Caller => HumanReadableEntryPointType::Session,
-                EntryPointType::Called => HumanReadableEntryPointType::Contract,
-                EntryPointType::Factory => HumanReadableEntryPointType::Factory,
-            }
-        }
-    }
-
-    impl From<HumanReadableEntryPointType> for EntryPointType {
-        fn from(value: HumanReadableEntryPointType) -> Self {
-            match value {
-                HumanReadableEntryPointType::Session => EntryPointType::Caller,
-                HumanReadableEntryPointType::Contract => EntryPointType::Called,
-                HumanReadableEntryPointType::Factory => EntryPointType::Factory,
-            }
-        }
-    }
-
     #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
     #[cfg_attr(feature = "json-schema", derive(JsonSchema))]
     #[cfg_attr(
         feature = "json-schema",
         schemars(
             rename = "ContractEntryPoint",
-            description = "Type signature of a contract method."
+            description = "Type signature of a method."
         )
     )]
     pub(crate) struct HumanReadableEntryPoint {
@@ -175,7 +130,7 @@ pub(crate) mod entry_point {
         args: Parameters,
         ret: CLType,
         access: EntryPointAccess,
-        entry_point_type: HumanReadableEntryPointType,
+        entry_point_type: EntryPointType,
     }
 
     impl From<&EntryPoint> for HumanReadableEntryPoint {
@@ -185,7 +140,7 @@ pub(crate) mod entry_point {
                 args: value.args().to_vec(),
                 ret: value.ret().clone(),
                 access: value.access().clone(),
-                entry_point_type: value.entry_point_type().into(),
+                entry_point_type: value.entry_point_type(),
             }
         }
     }
@@ -199,7 +154,7 @@ pub(crate) mod entry_point {
                 access,
                 entry_point_type,
             } = value;
-            EntryPoint::new(name, args, ret, access, entry_point_type.into())
+            EntryPoint::new(name, args, ret, access, entry_point_type)
         }
     }
 }
