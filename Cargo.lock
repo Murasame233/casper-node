@@ -797,11 +797,8 @@ version = "0.1.0"
 dependencies = [
  "base16",
  "bytes",
- "casper-execution-engine",
- "casper-executor-wasm",
  "casper-executor-wasm-common",
  "casper-executor-wasm-interface",
- "casper-executor-wasmer-backend",
  "casper-storage",
  "casper-types",
  "either",

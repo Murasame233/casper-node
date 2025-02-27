@@ -271,7 +271,7 @@ pub trait Caller {
     fn alloc(&mut self, idx: u32, size: usize, ctx: u32) -> VMResult<u32>;
     /// Returns the amount of gas used.
     fn gas_consumed(&mut self) -> MeteringPoints;
-    /// Set the amount of gas used. TODO: Use u512 instead of u64
+    /// Set the amount of gas used.
     fn consume_gas(&mut self, value: u64) -> MeteringPoints;
     /// Consumes a set amount of gas for the specified host function and weights
     fn charge_host_function_call<T>(
