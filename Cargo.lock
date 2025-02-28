@@ -832,6 +832,7 @@ dependencies = [
  "casper-executor-wasm-interface",
  "casper-sdk-sys",
  "casper-storage",
+ "casper-types",
  "once_cell",
  "regex",
  "wasmer",
@@ -6641,6 +6642,14 @@ dependencies = [
  "impls",
  "serde_json",
  "thiserror",
+]
+
+[[package]]
+name = "vm2-host"
+version = "0.1.0"
+dependencies = [
+ "casper-macros",
+ "casper-sdk",
 ]
 
 [[package]]
