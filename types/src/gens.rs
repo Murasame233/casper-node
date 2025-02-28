@@ -51,7 +51,7 @@ use crate::{
         TransferAddr,
     },
     AccessRights, AddressableEntity, AddressableEntityHash, BlockTime, ByteCode, ByteCodeAddr,
-    CLType, CLValue, Digest, EntityAddr, EntityKind, EntryPoint, EntryPointAccess, EntryPointAddr,
+    CLType, CLValue, Digest, EntityAddr, EntityKind, EntityEntryPoint, EntryPointAccess, EntryPointAddr,
     EntryPointPayment, EntryPointType, EntryPoints, EraId, Group, InitiatorAddr, Key, NamedArg,
     Package, Parameter, Phase, PricingMode, ProtocolVersion, PublicKey, RuntimeArgs, SemVer,
     StoredValue, TimeDiff, Timestamp, Transaction, TransactionEntryPoint,
@@ -489,7 +489,7 @@ pub fn parameters_arb() -> impl Strategy<Value = Parameters> {
     collection::vec(parameter_arb(), 0..10)
 }
 
-pub fn entry_point_arb() -> impl Strategy<Value = EntryPoint> {
+pub fn entry_point_arb() -> impl Strategy<Value = EntityEntryPoint> {
     (
         ".*",
         parameters_arb(),
@@ -500,7 +500,7 @@ pub fn entry_point_arb() -> impl Strategy<Value = EntryPoint> {
     )
         .prop_map(
             |(name, parameters, entry_point_type, entry_point_access, entry_point_payment, ret)| {
-                EntryPoint::new(
+                EntityEntryPoint::new(
                     name,
                     parameters,
                     ret,

@@ -37,10 +37,9 @@ use crate::{
     package::PackageStatus,
     serde_helpers::contract_package::HumanReadableContractPackage,
     uref::{self, URef},
-    AddressableEntityHash, CLType, CLTyped, EntityVersionKey, EntryPoint as EntityEntryPoint,
-    EntryPointAccess, EntryPointPayment, EntryPointType, EntryPoints as EntityEntryPoints, Group,
-    Groups, HashAddr, Key, Package, PackageHash, Parameter, Parameters, ProtocolVersion,
-    KEY_HASH_LENGTH,
+    AddressableEntityHash, CLType, CLTyped, EntityEntryPoint, EntityVersionKey, EntryPointAccess,
+    EntryPointPayment, EntryPointType, EntryPoints as EntityEntryPoints, Group, Groups, HashAddr,
+    Key, Package, PackageHash, Parameter, Parameters, ProtocolVersion, KEY_HASH_LENGTH,
 };
 
 const CONTRACT_STRING_PREFIX: &str = "contract-";
@@ -1281,10 +1280,7 @@ pub struct Contract {
     contract_package_hash: ContractPackageHash,
     contract_wasm_hash: ContractWasmHash,
     named_keys: NamedKeys,
-    #[cfg_attr(
-        feature = "json-schema",
-        schemars(with = "Vec<crate::serde_helpers::entry_point::HumanReadableEntryPoint>")
-    )]
+    #[cfg_attr(feature = "json-schema", schemars(with = "Vec<EntryPoint>"))]
     entry_points: EntryPoints,
     protocol_version: ProtocolVersion,
 }

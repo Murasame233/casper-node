@@ -108,61 +108,10 @@ pub(crate) mod deploy_hash_as_array {
     }
 }
 
-pub(crate) mod entry_point {
-    use super::*;
-    #[cfg(feature = "json-schema")]
-    use schemars::JsonSchema;
-    use serde::{Deserialize, Serialize};
-
-    use crate::{contracts::EntryPoint, CLType, EntryPointAccess, EntryPointType, Parameters};
-
-    #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-    #[cfg_attr(feature = "json-schema", derive(JsonSchema))]
-    #[cfg_attr(
-        feature = "json-schema",
-        schemars(
-            rename = "ContractEntryPoint",
-            description = "Type signature of a method."
-        )
-    )]
-    pub(crate) struct HumanReadableEntryPoint {
-        name: String,
-        args: Parameters,
-        ret: CLType,
-        access: EntryPointAccess,
-        entry_point_type: EntryPointType,
-    }
-
-    impl From<&EntryPoint> for HumanReadableEntryPoint {
-        fn from(value: &EntryPoint) -> Self {
-            Self {
-                name: String::from(value.name()),
-                args: value.args().to_vec(),
-                ret: value.ret().clone(),
-                access: value.access().clone(),
-                entry_point_type: value.entry_point_type(),
-            }
-        }
-    }
-
-    impl From<HumanReadableEntryPoint> for EntryPoint {
-        fn from(value: HumanReadableEntryPoint) -> Self {
-            let HumanReadableEntryPoint {
-                name,
-                args,
-                ret,
-                access,
-                entry_point_type,
-            } = value;
-            EntryPoint::new(name, args, ret, access, entry_point_type)
-        }
-    }
-}
-
 pub(crate) mod contract {
-    use super::{entry_point::HumanReadableEntryPoint, *};
+    use super::*;
     use crate::{
-        contracts::{ContractPackageHash, EntryPoints},
+        contracts::{ContractPackageHash, EntryPoint, EntryPoints},
         Contract, ContractWasmHash, NamedKeys, ProtocolVersion,
     };
     use core::fmt::Display;
@@ -183,7 +132,7 @@ pub(crate) mod contract {
         contract_package_hash: ContractPackageHash,
         contract_wasm_hash: ContractWasmHash,
         named_keys: NamedKeys,
-        entry_points: Vec<HumanReadableEntryPoint>,
+        entry_points: Vec<EntryPoint>,
         protocol_version: ProtocolVersion,
     }
 
@@ -194,13 +143,7 @@ pub(crate) mod contract {
                 contract_wasm_hash: value.contract_wasm_hash(),
                 named_keys: value.named_keys().clone(),
                 protocol_version: value.protocol_version(),
-                entry_points: value
-                    .entry_points()
-                    .clone()
-                    .take_entry_points()
-                    .iter()
-                    .map(Into::into)
-                    .collect(),
+                entry_points: value.entry_points().clone().take_entry_points(),
             }
         }
     }
@@ -234,10 +177,7 @@ pub(crate) mod contract {
             } = value;
             let mut entry_points_map = EntryPoints::new();
             for entry_point in entry_points {
-                if entry_points_map
-                    .add_entry_point(entry_point.into())
-                    .is_some()
-                {
+                if entry_points_map.add_entry_point(entry_point).is_some() {
                     //There were duplicate entries in regards to 'name'
                     return Err(ContractDeserializationError::NonUniqueEntryPointName);
                 }

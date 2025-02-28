@@ -6,7 +6,7 @@ extern crate alloc;
 
 use casper_contract::contract_api::{runtime, storage};
 use casper_types::{
-    contracts::ContractHash, runtime_args, AddressableEntityHash, CLType, CLTyped, EntryPoint,
+    contracts::ContractHash, runtime_args, AddressableEntityHash, CLType, CLTyped, EntityEntryPoint,
     EntryPointAccess, EntryPointPayment, EntryPointType, EntryPoints, Key, Parameter,
 };
 
@@ -17,7 +17,7 @@ const CONTRACT_HASH_NAME: &str = "regression-contract-hash";
 #[no_mangle]
 pub extern "C" fn call() {
     let mut entry_points = EntryPoints::new();
-    entry_points.add_entry_point(EntryPoint::new(
+    entry_points.add_entry_point(EntityEntryPoint::new(
         RECURSE_ENTRYPOINT,
         vec![Parameter::new(ARG_TARGET, AddressableEntityHash::cl_type())],
         CLType::Unit,

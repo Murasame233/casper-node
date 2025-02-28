@@ -38,7 +38,7 @@ use casper_types::{
     },
     addressable_entity::{
         self, ActionThresholds, ActionType, AddressableEntity, AddressableEntityHash,
-        AssociatedKeys, ContractRuntimeTag, EntityKindTag, EntryPoint, EntryPointAccess,
+        AssociatedKeys, ContractRuntimeTag, EntityKindTag, EntityEntryPoint, EntryPointAccess,
         EntryPointType, EntryPoints, MessageTopicError, MessageTopics, NamedKeyAddr, NamedKeyValue,
         Parameter, Weight, DEFAULT_ENTRY_POINT_NAME,
     },
@@ -1453,7 +1453,7 @@ where
     fn get_context_key_for_contract_call(
         &self,
         entity_addr: EntityAddr,
-        entry_point: &EntryPoint,
+        entry_point: &EntityEntryPoint,
     ) -> Result<Key, ExecError> {
         let current = self.context.entry_point_type();
         let next = entry_point.entry_point_type();

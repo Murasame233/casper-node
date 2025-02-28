@@ -11,7 +11,7 @@ use casper_contract::{
 };
 use casper_types::{
     addressable_entity::Parameters, contracts::ContractHash, ApiError, CLType, CLValue,
-    EntityVersion, EntryPoint, EntryPointAccess, EntryPointPayment, EntryPointType, EntryPoints,
+    EntityVersion, EntityEntryPoint, EntryPointAccess, EntryPointPayment, EntryPointType, EntryPoints,
     Phase, RuntimeArgs,
 };
 
@@ -40,7 +40,7 @@ fn store() -> (ContractHash, EntityVersion) {
     let entry_points = {
         let mut entry_points = EntryPoints::new();
 
-        let entry_point_1 = EntryPoint::new(
+        let entry_point_1 = EntityEntryPoint::new(
             NOOP_EXT,
             Parameters::default(),
             CLType::Unit,
@@ -51,7 +51,7 @@ fn store() -> (ContractHash, EntityVersion) {
 
         entry_points.add_entry_point(entry_point_1);
 
-        let entry_point_2 = EntryPoint::new(
+        let entry_point_2 = EntityEntryPoint::new(
             GET_PHASE_EXT,
             Parameters::default(),
             CLType::Unit,

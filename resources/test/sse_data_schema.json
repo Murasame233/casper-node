@@ -4118,7 +4118,7 @@
         "entry_points": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/ContractEntryPoint"
+            "$ref": "#/definitions/EntryPoint"
           }
         },
         "protocol_version": {
@@ -4130,8 +4130,8 @@
       "description": "The hash address of the contract wasm",
       "type": "string"
     },
-    "ContractEntryPoint": {
-      "description": "Type signature of a method.",
+    "EntryPoint": {
+      "description": "Type signature of a method. Order of arguments matter since can be referenced by index as well as name.",
       "type": "object",
       "required": [
         "access",
@@ -4819,14 +4819,14 @@
           ],
           "properties": {
             "V1CasperVm": {
-              "$ref": "#/definitions/EntryPoint"
+              "$ref": "#/definitions/EntityEntryPoint"
             }
           },
           "additionalProperties": false
         }
       ]
     },
-    "EntryPoint": {
+    "EntityEntryPoint": {
       "description": "Type signature of a method. Order of arguments matter since can be referenced by index as well as name.",
       "type": "object",
       "required": [

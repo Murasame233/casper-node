@@ -9,7 +9,7 @@ use casper_contract::contract_api::{runtime, storage};
 use casper_types::{
     addressable_entity::Parameters,
     contracts::{ContractHash, ContractVersion},
-    AddressableEntityHash, CLType, EntryPoint, EntryPointAccess, EntryPointPayment, EntryPointType,
+    AddressableEntityHash, CLType, EntityEntryPoint, EntryPointAccess, EntryPointPayment, EntryPointType,
     EntryPoints, Key, NamedKeys, RuntimeArgs,
 };
 
@@ -35,7 +35,7 @@ pub extern "C" fn contract_ext() {
             let entry_points = {
                 let mut entry_points = EntryPoints::new();
 
-                let entry_point = EntryPoint::new(
+                let entry_point = EntityEntryPoint::new(
                     "functiondoesnotexist",
                     Parameters::default(),
                     CLType::Unit,
@@ -58,7 +58,7 @@ fn store(named_keys: NamedKeys) -> (ContractHash, ContractVersion) {
     let entry_points = {
         let mut entry_points = EntryPoints::new();
 
-        let entry_point = EntryPoint::new(
+        let entry_point = EntityEntryPoint::new(
             ENTRY_POINT_NAME,
             Parameters::default(),
             CLType::Unit,

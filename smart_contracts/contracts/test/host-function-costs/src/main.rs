@@ -16,7 +16,7 @@ use casper_types::{
     account::{AccountHash, ActionType, Weight},
     bytesrepr::Bytes,
     contracts::NamedKeys,
-    runtime_args, ApiError, BlockTime, CLType, CLTyped, CLValue, EntryPoint, EntryPointAccess,
+    runtime_args, ApiError, BlockTime, CLType, CLTyped, CLValue, EntityEntryPoint, EntryPointAccess,
     EntryPointPayment, EntryPointType, EntryPoints, Key, Parameter, Phase, RuntimeArgs, U512,
 };
 
@@ -276,7 +276,7 @@ pub extern "C" fn arg_size_function_call_100() {
 pub extern "C" fn call() {
     let entry_points = {
         let mut entry_points = EntryPoints::new();
-        let entry_point = EntryPoint::new(
+        let entry_point = EntityEntryPoint::new(
             DO_NOTHING_NAME,
             Vec::new(),
             CLType::Unit,
@@ -286,7 +286,7 @@ pub extern "C" fn call() {
         );
         entry_points.add_entry_point(entry_point);
 
-        let entry_point = EntryPoint::new(
+        let entry_point = EntityEntryPoint::new(
             DO_SOMETHING_NAME,
             Vec::new(),
             CLType::Unit,
@@ -296,7 +296,7 @@ pub extern "C" fn call() {
         );
         entry_points.add_entry_point(entry_point);
 
-        let entry_point = EntryPoint::new(
+        let entry_point = EntityEntryPoint::new(
             CALLS_DO_NOTHING_LEVEL1_NAME,
             Vec::new(),
             CLType::Unit,
@@ -305,7 +305,7 @@ pub extern "C" fn call() {
             EntryPointPayment::Caller,
         );
         entry_points.add_entry_point(entry_point);
-        let entry_point = EntryPoint::new(
+        let entry_point = EntityEntryPoint::new(
             CALLS_DO_NOTHING_LEVEL2_NAME,
             Vec::new(),
             CLType::Unit,
@@ -315,7 +315,7 @@ pub extern "C" fn call() {
         );
         entry_points.add_entry_point(entry_point);
 
-        let entry_point = EntryPoint::new(
+        let entry_point = EntityEntryPoint::new(
             SHORT_FUNCTION_NAME_1,
             Vec::new(),
             CLType::Unit,
@@ -324,7 +324,7 @@ pub extern "C" fn call() {
             EntryPointPayment::Caller,
         );
         entry_points.add_entry_point(entry_point);
-        let entry_point = EntryPoint::new(
+        let entry_point = EntityEntryPoint::new(
             SHORT_FUNCTION_NAME_100,
             Vec::new(),
             CLType::Unit,
@@ -334,7 +334,7 @@ pub extern "C" fn call() {
         );
         entry_points.add_entry_point(entry_point);
 
-        let entry_point = EntryPoint::new(
+        let entry_point = EntityEntryPoint::new(
             LONG_FUNCTION_NAME_1,
             Vec::new(),
             CLType::Unit,
@@ -343,7 +343,7 @@ pub extern "C" fn call() {
             EntryPointPayment::Caller,
         );
         entry_points.add_entry_point(entry_point);
-        let entry_point = EntryPoint::new(
+        let entry_point = EntityEntryPoint::new(
             LONG_FUNCTION_NAME_100,
             Vec::new(),
             CLType::Unit,
@@ -353,7 +353,7 @@ pub extern "C" fn call() {
         );
         entry_points.add_entry_point(entry_point);
 
-        let entry_point = EntryPoint::new(
+        let entry_point = EntityEntryPoint::new(
             ARG_SIZE_FUNCTION_NAME,
             vec![Parameter::new(ARG_BYTES, <Vec<u8>>::cl_type())],
             CLType::Unit,
@@ -363,7 +363,7 @@ pub extern "C" fn call() {
         );
         entry_points.add_entry_point(entry_point);
 
-        let entry_point = EntryPoint::new(
+        let entry_point = EntityEntryPoint::new(
             "account_function",
             Vec::new(),
             CLType::Unit,
@@ -373,7 +373,7 @@ pub extern "C" fn call() {
         );
         entry_points.add_entry_point(entry_point);
 
-        let entry_point = EntryPoint::new(
+        let entry_point = EntityEntryPoint::new(
             "storage_function",
             Vec::new(),
             CLType::Unit,
@@ -383,7 +383,7 @@ pub extern "C" fn call() {
         );
         entry_points.add_entry_point(entry_point);
 
-        let entry_point = EntryPoint::new(
+        let entry_point = EntityEntryPoint::new(
             ARG_SIZE_FUNCTION_CALL_1_NAME,
             Vec::new(),
             CLType::Unit,
@@ -393,7 +393,7 @@ pub extern "C" fn call() {
         );
         entry_points.add_entry_point(entry_point);
 
-        let entry_point = EntryPoint::new(
+        let entry_point = EntityEntryPoint::new(
             ARG_SIZE_FUNCTION_CALL_100_NAME,
             Vec::new(),
             CLType::Unit,
