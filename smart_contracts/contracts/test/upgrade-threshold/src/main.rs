@@ -11,8 +11,8 @@ use casper_contract::{
 use casper_types::{
     account::AccountHash,
     addressable_entity::{ActionType, Weight},
-    AddressableEntityHash, CLType, EntityEntryPoint, EntryPointAccess, EntryPointPayment, EntryPointType,
-    EntryPoints, Key, Parameter,
+    AddressableEntityHash, CLType, EntityEntryPoint, EntryPointAccess, EntryPointPayment,
+    EntryPointType, EntryPoints, Key, Parameter,
 };
 
 const ARG_ENTITY_ACCOUNT_HASH: &str = "entity_account_hash";

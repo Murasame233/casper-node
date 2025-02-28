@@ -6,8 +6,8 @@ use crate::{
         METHOD_GET_ERA_VALIDATORS, METHOD_READ_ERA_ID, METHOD_REDELEGATE, METHOD_RUN_AUCTION,
         METHOD_SLASH, METHOD_UNDELEGATE, METHOD_WITHDRAW_BID,
     },
-    CLType, CLTyped, EntityEntryPoint, EntryPointAccess, EntryPointPayment, EntryPointType, EntryPoints,
-    Parameter, PublicKey, U512,
+    CLType, CLTyped, EntityEntryPoint, EntryPointAccess, EntryPointPayment, EntryPointType,
+    EntryPoints, Parameter, PublicKey, U512,
 };
 use alloc::boxed::Box;
 

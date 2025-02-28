@@ -10,7 +10,9 @@ use casper_contract::{
     unwrap_or_revert::UnwrapOrRevert,
 };
 use casper_types::{
-    addressable_entity::{EntityEntryPoint, EntryPointAccess, EntryPointType, EntryPoints, Parameter},
+    addressable_entity::{
+        EntityEntryPoint, EntryPointAccess, EntryPointType, EntryPoints, Parameter,
+    },
     system::standard_payment,
     AddressableEntityHash, CLType, EntryPointPayment, Key, RuntimeArgs, URef, U512,
 };

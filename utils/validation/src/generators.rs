@@ -18,10 +18,10 @@ use casper_types::{
         mint::BalanceHoldAddr,
     },
     AccessRights, AddressableEntityHash, BlockTime, ByteCode, ByteCodeHash, ByteCodeKind, CLType,
-    CLTyped, CLValue, ContractRuntimeTag, DeployHash, DeployInfo, EntityVersionKey, EntityVersions,
-    EntityEntryPoint, EntryPointAccess, EntryPointPayment, EntryPointType, EntryPointValue, EraId, Group,
-    Groups, Key, Package, PackageHash, PackageStatus, Parameter, ProtocolVersion, PublicKey,
-    SecretKey, StoredValue, TransferAddr, TransferV1, URef, U512,
+    CLTyped, CLValue, ContractRuntimeTag, DeployHash, DeployInfo, EntityEntryPoint,
+    EntityVersionKey, EntityVersions, EntryPointAccess, EntryPointPayment, EntryPointType,
+    EntryPointValue, EraId, Group, Groups, Key, Package, PackageHash, PackageStatus, Parameter,
+    ProtocolVersion, PublicKey, SecretKey, StoredValue, TransferAddr, TransferV1, URef, U512,
 };
 use casper_validation::{
     abi::{ABIFixture, ABITestCase},

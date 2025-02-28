@@ -38,7 +38,7 @@ use casper_types::{
     },
     addressable_entity::{
         self, ActionThresholds, ActionType, AddressableEntity, AddressableEntityHash,
-        AssociatedKeys, ContractRuntimeTag, EntityKindTag, EntityEntryPoint, EntryPointAccess,
+        AssociatedKeys, ContractRuntimeTag, EntityEntryPoint, EntityKindTag, EntryPointAccess,
         EntryPointType, EntryPoints, MessageTopicError, MessageTopics, NamedKeyAddr, NamedKeyValue,
         Parameter, Weight, DEFAULT_ENTRY_POINT_NAME,
     },

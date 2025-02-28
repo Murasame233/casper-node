@@ -15,8 +15,8 @@ use casper_types::{
     contracts::{ContractPackageHash, NamedKeys},
     runtime_args,
     system::auction::{self, DelegationRate},
-    CLType, CLTyped, CLValue, EntityEntryPoint, EntryPointAccess, EntryPointPayment, EntryPointType,
-    EntryPoints, Key, Parameter, PublicKey, RuntimeArgs, U512,
+    CLType, CLTyped, CLValue, EntityEntryPoint, EntryPointAccess, EntryPointPayment,
+    EntryPointType, EntryPoints, Key, Parameter, PublicKey, RuntimeArgs, U512,
 };
 
 const METHOD_ADD_BID_PROXY_CALL_1: &str = "add_bid_proxy_call_1";

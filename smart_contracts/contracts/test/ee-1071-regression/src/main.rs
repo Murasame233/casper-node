@@ -3,8 +3,8 @@
 
 use casper_contract::contract_api::{runtime, storage};
 use casper_types::{
-    addressable_entity::Parameters, AddressableEntityHash, CLType, EntityEntryPoint, EntryPointAccess,
-    EntryPointPayment, EntryPointType, EntryPoints, Key,
+    addressable_entity::Parameters, AddressableEntityHash, CLType, EntityEntryPoint,
+    EntryPointAccess, EntryPointPayment, EntryPointType, EntryPoints, Key,
 };
 
 const CONTRACT_HASH_NAME: &str = "contract";

@@ -6,8 +6,8 @@ extern crate alloc;
 use alloc::string::ToString;
 use casper_contract::contract_api::{runtime, storage};
 use casper_types::{
-    addressable_entity::Parameters, AddressableEntityHash, CLType, EntityEntryPoint, EntryPointAccess,
-    EntryPointPayment, EntryPointType, EntryPoints, Key,
+    addressable_entity::Parameters, AddressableEntityHash, CLType, EntityEntryPoint,
+    EntryPointAccess, EntryPointPayment, EntryPointType, EntryPoints, Key,
 };
 
 const METHOD_TEST_ENTRY_POINT: &str = "test_entry_point";

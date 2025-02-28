@@ -14,8 +14,8 @@ use casper_contract::{
 };
 use casper_types::{
     addressable_entity::EntityKindTag, api_error, bytesrepr::ToBytes, contracts::NamedKeys,
-    AccessRights, AddressableEntityHash, ApiError, CLType, CLValue, EntityEntryPoint, EntryPointAccess,
-    EntryPointPayment, EntryPointType, EntryPoints, Key, URef,
+    AccessRights, AddressableEntityHash, ApiError, CLType, CLValue, EntityEntryPoint,
+    EntryPointAccess, EntryPointPayment, EntryPointType, EntryPoints, Key, URef,
 };
 
 pub const DICTIONARY_NAME: &str = "local";

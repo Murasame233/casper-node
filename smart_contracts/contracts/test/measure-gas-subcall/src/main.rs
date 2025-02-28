@@ -11,8 +11,8 @@ use casper_contract::{
 };
 use casper_types::{
     addressable_entity::Parameters, contracts::ContractHash, ApiError, CLType, CLValue,
-    EntityVersion, EntityEntryPoint, EntryPointAccess, EntryPointPayment, EntryPointType, EntryPoints,
-    Phase, RuntimeArgs,
+    EntityEntryPoint, EntityVersion, EntryPointAccess, EntryPointPayment, EntryPointType,
+    EntryPoints, Phase, RuntimeArgs,
 };
 
 const ARG_TARGET: &str = "target_contract";

@@ -1960,9 +1960,9 @@ pub trait StateProvider: Send + Sync + Sized {
                             ContractResult::Success { contract } => {
                                 match contract.entry_points().get(entry_point_name) {
                                     Some(contract_entry_point) => EntryPointResult::Success {
-                                        entry_point: EntryPointValue::V1CasperVm(EntityEntryPoint::from(
-                                            contract_entry_point,
-                                        )),
+                                        entry_point: EntryPointValue::V1CasperVm(
+                                            EntityEntryPoint::from(contract_entry_point),
+                                        ),
                                     },
                                     None => {
                                         EntryPointResult::ValueNotFound(query_result_not_found_msg)

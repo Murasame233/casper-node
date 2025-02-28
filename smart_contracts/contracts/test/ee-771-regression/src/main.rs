@@ -9,8 +9,8 @@ use casper_contract::contract_api::{runtime, storage};
 use casper_types::{
     addressable_entity::Parameters,
     contracts::{ContractHash, ContractVersion},
-    AddressableEntityHash, CLType, EntityEntryPoint, EntryPointAccess, EntryPointPayment, EntryPointType,
-    EntryPoints, Key, NamedKeys, RuntimeArgs,
+    AddressableEntityHash, CLType, EntityEntryPoint, EntryPointAccess, EntryPointPayment,
+    EntryPointType, EntryPoints, Key, NamedKeys, RuntimeArgs,
 };
 
 const ENTRY_POINT_NAME: &str = "contract_ext";

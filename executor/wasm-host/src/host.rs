@@ -23,7 +23,7 @@ use casper_types::{
     account::AccountHash,
     addressable_entity::{ActionThresholds, AssociatedKeys, NamedKeyAddr},
     AddressableEntity, AddressableEntityHash, BlockHash, ByteCode, ByteCodeAddr, ByteCodeHash,
-    ByteCodeKind, CLType, ContractRuntimeTag, Digest, EntityAddr, EntityKind, EntityEntryPoint,
+    ByteCodeKind, CLType, ContractRuntimeTag, Digest, EntityAddr, EntityEntryPoint, EntityKind,
     EntryPointAccess, EntryPointAddr, EntryPointPayment, EntryPointType, EntryPointValue, Groups,
     HashAddr, Key, Package, PackageHash, PackageStatus, ProtocolVersion, StoredValue, URef, U512,
 };
