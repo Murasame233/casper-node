@@ -88,8 +88,8 @@ pub use access_rights::{
 pub use account::Account;
 #[doc(inline)]
 pub use addressable_entity::{
-    AddressableEntity, AddressableEntityHash, ContractRuntimeTag, EntityAddr, EntityKind,
-    EntryPoint, EntryPointAccess, EntryPointAddr, EntryPointPayment, EntryPointType,
+    AddressableEntity, AddressableEntityHash, ContractRuntimeTag, EntityAddr, EntityEntryPoint,
+    EntityKind, EntryPointAccess, EntryPointAddr, EntryPointPayment, EntryPointType,
     EntryPointValue, EntryPoints, Parameter, Parameters, DEFAULT_ENTRY_POINT_NAME,
 };
 #[doc(inline)]

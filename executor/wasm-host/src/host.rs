@@ -25,7 +25,7 @@ use casper_types::{
     addressable_entity::{ActionThresholds, AssociatedKeys, NamedKeyAddr},
     bytesrepr::ToBytes,
     AddressableEntity, AddressableEntityHash, BlockHash, ByteCode, ByteCodeAddr, ByteCodeHash,
-    ByteCodeKind, CLType, ContractRuntimeTag, Digest, EntityAddr, EntityKind, EntryPoint,
+    ByteCodeKind, CLType, ContractRuntimeTag, Digest, EntityAddr, EntityEntryPoint, EntityKind,
     EntryPointAccess, EntryPointAddr, EntryPointPayment, EntryPointType, EntryPointValue, Groups,
     HashAddr, Key, Package, PackageHash, PackageStatus, ProtocolVersion, StoredValue, URef, U512,
 };
@@ -142,7 +142,7 @@ pub fn casper_write<S: GlobalStateReader, E: Executor>(
                 }
             };
 
-            let entry_point = EntryPoint::new(
+            let entry_point = EntityEntryPoint::new(
                 "_",
                 Vec::new(),
                 CLType::Unit,
