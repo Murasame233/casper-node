@@ -15,7 +15,6 @@ mod next_upgrade;
 mod pricing_handling;
 mod protocol_config;
 mod refund_handling;
-mod rewards_handling;
 mod transaction_config;
 mod upgrade_config;
 mod vacancy_config;
@@ -43,14 +42,14 @@ pub use accounts_config::{
 };
 pub use activation_point::ActivationPoint;
 pub use chainspec_raw_bytes::ChainspecRawBytes;
+#[cfg(any(all(feature = "std", feature = "testing"), test))]
+pub use core_config::DEFAULT_FEE_HANDLING;
 pub use core_config::{
     ConsensusProtocolName, CoreConfig, LegacyRequiredFinality, DEFAULT_GAS_HOLD_INTERVAL,
     DEFAULT_MINIMUM_BID_AMOUNT,
 };
 #[cfg(any(feature = "std", test))]
-pub use core_config::{
-    DEFAULT_BASELINE_MOTES_AMOUNT, DEFAULT_FEE_HANDLING, DEFAULT_REFUND_HANDLING,
-};
+pub use core_config::{DEFAULT_BASELINE_MOTES_AMOUNT, DEFAULT_REFUND_HANDLING};
 pub use fee_handling::FeeHandling;
 #[cfg(any(feature = "std", test))]
 pub use genesis_config::GenesisConfig;
@@ -62,7 +61,6 @@ pub use next_upgrade::NextUpgrade;
 pub use pricing_handling::PricingHandling;
 pub use protocol_config::ProtocolConfig;
 pub use refund_handling::RefundHandling;
-pub use rewards_handling::{RewardsHandling, REWARDS_HANDLING_RATIO_TAG};
 pub use transaction_config::{
     DeployConfig, TransactionConfig, TransactionLaneDefinition, TransactionV1Config,
 };
@@ -74,7 +72,7 @@ pub use upgrade_config::ProtocolUpgradeConfig;
 pub use vacancy_config::VacancyConfig;
 pub use vm_config::{
     AuctionCosts, BrTableCost, ChainspecRegistry, ControlFlowCosts, HandlePaymentCosts,
-    HostFunction, HostFunctionCost, HostFunctionCostsV1, HostFunctionCostsV2, HostFunctionV2,
+    HostFFIFunctionCost, HostFFIFunctionCosts, HostFunction, HostFunctionCost, HostFunctionCostsV1,
     MessageLimits, MintCosts, OpcodeCosts, StandardPaymentCosts, StorageCosts, SystemConfig,
     WasmConfig, WasmV1Config, WasmV2Config, DEFAULT_HOST_FUNCTION_NEW_DICTIONARY,
 };
@@ -195,8 +193,7 @@ impl Chainspec {
         let validator_minimum_bid_amount = self.core_config.minimum_bid_amount;
         let maximum_delegation_amount = self.core_config.maximum_delegation_amount;
         let minimum_delegation_amount = self.core_config.minimum_delegation_amount;
-        let enable_addressable_entity = self.core_config.enable_addressable_entity;
-        let rewards_handling = self.core_config.rewards_handling.clone();
+        let addressable_entity_enabled = self.core_config.addressable_entity_enabled;
 
         Ok(ProtocolUpgradeConfig::new(
             pre_state_hash,
@@ -216,8 +213,7 @@ impl Chainspec {
             validator_minimum_bid_amount,
             maximum_delegation_amount,
             minimum_delegation_amount,
-            enable_addressable_entity,
-            rewards_handling,
+            addressable_entity_enabled,
         ))
     }
 

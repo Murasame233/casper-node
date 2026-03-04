@@ -1,4 +1,3 @@
-use num_rational::Ratio;
 #[cfg(test)]
 use rand::{
     distributions::{Distribution, Standard},
@@ -75,11 +74,6 @@ impl GenesisRequest {
     /// Returns chainspec registry.
     pub fn chainspec_registry(&self) -> &ChainspecRegistry {
         &self.chainspec_registry
-    }
-
-    /// Push a rewards ratio into the genesis request.
-    pub fn push_rewards_ratio(&mut self, rewards_ratio: Ratio<u64>) {
-        self.config.push_rewards_ratio(rewards_ratio)
     }
 }
 

@@ -9,19 +9,7 @@ All notable changes to this project will be documented in this file.  The format
 [comment]: <> (Fixed:      any bug fixes)
 [comment]: <> (Security:   in case of vulnerabilities)
 
-## 2.1.2
-### Fixed
-* Fixed an issue in the storage create which allowed delegators to exceed the maximum limit set by the validator for the validator's bid
-
-### Changed
-* Changed the behavior of withdraw bid to return an UnbondAmountTooLarge error instead of triggering a unbonding of the validator and their delegators.
-
-## 2.1.1
-
-### Fixed
-* Fixed an issue in the storage crate regarding incorrect setting of maximum delegator amount on validator bids
-
-## 2.1.0
+## [Unreleased]
 ### Added
 * `TransactionInvocationTarget::ByPackageHash` has a new field `version_key`
 * `TransactionInvocationTarget::ByPackageName` has a new field `version_key`

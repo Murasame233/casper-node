@@ -33,14 +33,14 @@ use casper_types::{
             SEIGNIORAGE_RECIPIENTS_SNAPSHOT_VERSION_KEY,
         },
         mint::{
-            BalanceHoldAddr, BalanceHoldAddrTag, ARG_AMOUNT, MINT_SUSTAIN_PURSE_KEY,
-            ROUND_SEIGNIORAGE_RATE_KEY, TOTAL_SUPPLY_KEY,
+            BalanceHoldAddr, BalanceHoldAddrTag, ARG_AMOUNT, ROUND_SEIGNIORAGE_RATE_KEY,
+            TOTAL_SUPPLY_KEY,
         },
         AUCTION, HANDLE_PAYMENT, MINT,
     },
     Account, AddressableEntity, BlockGlobalAddr, CLValue, Digest, EntityAddr, EntityEntryPoint,
     EntryPointAddr, EntryPointValue, HoldsEpoch, Key, KeyTag, Phase, PublicKey, RuntimeArgs,
-    StoredValue, SystemHashRegistry, REWARDS_HANDLING_RATIO_TAG, U512,
+    StoredValue, SystemHashRegistry, U512,
 };
 
 #[cfg(test)]
@@ -465,19 +465,7 @@ pub trait CommitProvider: StateProvider {
             }
         };
 
-        let rewards_handling = request.config().rewards_handling();
-        let sustain_purse = match runtime
-            .runtime_footprint()
-            .named_keys()
-            .get(MINT_SUSTAIN_PURSE_KEY)
-        {
-            Some(Key::URef(uref)) => Some(*uref),
-            Some(_) | None => None,
-        };
-
-        if let Err(auction_error) =
-            runtime.distribute(rewards.clone(), sustain_purse, rewards_handling)
-        {
+        if let Err(auction_error) = runtime.distribute(rewards.clone()) {
             error!(
                 "distribute block rewards failed due to auction error {:?}",
                 auction_error
@@ -1087,7 +1075,6 @@ pub trait StateProvider: Send + Sync + Sized {
             SeigniorageRecipientsResult::AuctionNotFound => EraValidatorsResult::AuctionNotFound,
             SeigniorageRecipientsResult::Success {
                 seigniorage_recipients,
-                ..
             } => {
                 let era_validators = match seigniorage_recipients {
                     SeigniorageRecipientsSnapshot::V1(snapshot) => {
@@ -1337,9 +1324,6 @@ pub trait StateProvider: Send + Sync + Sized {
         let address_generator = AddressGenerator::new(&id.seed(), phase);
         let max_delegators_per_validator = config.max_delegators_per_validator();
         let minimum_bid_amount = config.minimum_bid_amount();
-
-        let global_minimum_delegation_limit = config.global_minimum_delegation_amount();
-        let global_maximum_delegation_limit = config.global_maximum_delegation_amount();
         let mut runtime = RuntimeNative::new(
             config,
             id,
@@ -1380,8 +1364,6 @@ pub trait StateProvider: Send + Sync + Sized {
                     minimum_bid_amount,
                     max_delegators_per_validator,
                     reserved_slots,
-                    global_minimum_delegation_limit,
-                    global_maximum_delegation_limit,
                 )
                 .map(AuctionMethodRet::UpdatedAmount)
                 .map_err(TrackingCopyError::Api),
@@ -2667,39 +2649,8 @@ fn get_snapshot_data<T: StateProvider>(
         Err(value) => return value,
     };
 
-    let query_request = QueryRequest::new(state_hash, Key::RewardsHandling, vec![]);
-    let rewards_ratio = match state_provider.query(query_request) {
-        QueryResult::RootNotFound => return SeigniorageRecipientsResult::RootNotFound,
-        QueryResult::ValueNotFound(_) => Ratio::new(0, 1),
-        QueryResult::Success { value, .. } => {
-            if let StoredValue::CLValue(cl_value) = *value {
-                match cl_value.to_t::<BTreeMap<u8, Vec<u8>>>() {
-                    Ok(rewards_handling) => {
-                        match rewards_handling.get(&REWARDS_HANDLING_RATIO_TAG) {
-                            Some(bytes) => {
-                                let ratio =
-                                    match casper_types::bytesrepr::FromBytes::from_bytes(bytes) {
-                                        Ok((ratio, _)) => ratio,
-                                        Err(_) => Ratio::new(0, 1),
-                                    };
-
-                                ratio
-                            }
-                            None => Ratio::new(0, 1),
-                        }
-                    }
-                    Err(_) => Ratio::new(0, 1),
-                }
-            } else {
-                Ratio::new(0, 1)
-            }
-        }
-        QueryResult::Failure(tce) => return SeigniorageRecipientsResult::Failure(tce),
-    };
-
     SeigniorageRecipientsResult::Success {
         seigniorage_recipients: snapshot,
-        rewards_ratio,
     }
 }
 

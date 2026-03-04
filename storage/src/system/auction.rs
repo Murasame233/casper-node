@@ -23,7 +23,7 @@ use casper_types::{
         UnbondEra, UnbondKind, ValidatorBid, ValidatorCredit, ValidatorWeights,
         DELEGATION_RATE_DENOMINATOR,
     },
-    AccessRights, ApiError, EraId, Key, PublicKey, RewardsHandling, URef, U512,
+    AccessRights, ApiError, EraId, Key, PublicKey, URef, U512,
 };
 
 /// Bonding auction contract interface
@@ -73,13 +73,12 @@ pub trait Auction:
         public_key: PublicKey,
         delegation_rate: DelegationRate,
         amount: U512,
-        minimum_delegation_amount: Option<u64>,
-        maximum_delegation_amount: Option<u64>,
+        vesting_schedule_period_millis: u64,
+        minimum_delegation_amount: u64,
+        maximum_delegation_amount: u64,
         minimum_bid_amount: u64,
         max_delegators_per_validator: u32,
         reserved_slots: u32,
-        global_minimum_delegation_amount: u64,
-        global_maximum_delegation_amount: u64,
     ) -> Result<U512, ApiError> {
         if !self.allow_auction_bids() {
             // The validator set may be closed on some side chains,
@@ -104,19 +103,6 @@ pub trait Auction:
         if !self.is_allowed_session_caller(&provided_account_hash) {
             return Err(Error::InvalidContext.into());
         }
-
-        if let Some(minimum_delegation_amount) = minimum_delegation_amount {
-            if minimum_delegation_amount < global_minimum_delegation_amount {
-                return Err(ApiError::InvalidDelegationAmountLimits);
-            }
-        }
-
-        if let Some(maximum_delegation_amount) = maximum_delegation_amount {
-            if maximum_delegation_amount > global_maximum_delegation_amount {
-                return Err(ApiError::InvalidDelegationAmountLimits);
-            }
-        }
-
         let validator_bid_key = BidAddr::from(public_key.clone()).into();
         let (target, validator_bid) = if let Some(BidKind::Validator(mut validator_bid)) =
             self.read_bid(&validator_bid_key)?
@@ -128,19 +114,11 @@ pub trait Auction:
             // idempotent
             validator_bid.activate();
 
-            let minimum_delegation_amount =
-                minimum_delegation_amount.unwrap_or(validator_bid.minimum_delegation_amount());
-            let maximum_delegation_amount =
-                maximum_delegation_amount.unwrap_or(validator_bid.maximum_delegation_amount());
-
-            if maximum_delegation_amount < minimum_delegation_amount {
-                return Err(ApiError::InvalidDelegationAmountLimits);
-            }
-
             validator_bid.with_delegation_rate(delegation_rate);
             process_updated_delegator_stake_boundaries(
                 self,
                 &mut validator_bid,
+                vesting_schedule_period_millis,
                 minimum_delegation_amount,
                 maximum_delegation_amount,
             )?;
@@ -155,15 +133,6 @@ pub trait Auction:
             if amount < U512::from(minimum_bid_amount) {
                 return Err(Error::BondTooSmall.into());
             }
-            let minimum_delegation_amount =
-                minimum_delegation_amount.unwrap_or(global_minimum_delegation_amount);
-            let maximum_delegation_amount =
-                maximum_delegation_amount.unwrap_or(global_maximum_delegation_amount);
-
-            if maximum_delegation_amount < minimum_delegation_amount {
-                return Err(ApiError::InvalidDelegationAmountLimits);
-            }
-
             // create new validator bid
             let bonding_purse = self.create_purse()?;
             let validator_bid = ValidatorBid::unlocked(
@@ -399,6 +368,16 @@ pub trait Auction:
         }
 
         for reservation in reservations {
+            if reservation.validator_public_key().is_system() {
+                warn!("attempt to reserve using system identity as validator");
+                return Err(Error::InvalidPublicKey);
+            }
+            if let Some(del_pub_key) = reservation.delegator_kind().maybe_public_key() {
+                if del_pub_key.is_system() {
+                    warn!("attempt to reserve using system identity as delegator");
+                    return Err(Error::InvalidPublicKey);
+                }
+            }
             if !self
                 .is_allowed_session_caller(&AccountHash::from(reservation.validator_public_key()))
             {
@@ -633,46 +612,10 @@ pub trait Auction:
     /// according to `reward_factors` returned by the consensus component.
     // TODO: rework EraInfo and other related structs, methods, etc. to report correct era-end
     // totals of per-block rewards
-    fn distribute(
-        &mut self,
-        rewards: BTreeMap<PublicKey, Vec<U512>>,
-        sustain_purse: Option<URef>,
-        rewards_handling: RewardsHandling,
-    ) -> Result<(), Error> {
+    fn distribute(&mut self, rewards: BTreeMap<PublicKey, Vec<U512>>) -> Result<(), Error> {
         if self.get_caller() != PublicKey::System.to_account_hash() {
             error!("invalid caller to auction distribute");
             return Err(Error::InvalidCaller);
-        }
-
-        let total = {
-            let mut ret = U512::zero();
-            for rewards_vec in rewards.values() {
-                for reward in rewards_vec {
-                    ret += *reward
-                }
-            }
-
-            ret
-        };
-        let total = Ratio::new(total, U512::one());
-        let sustain_ratio = match rewards_handling {
-            RewardsHandling::Standard => Ratio::new(U512::zero(), U512::one()),
-            RewardsHandling::Sustain { ratio, .. } => {
-                let numerator = U512::from(*ratio.numer());
-                let denom = U512::from(*ratio.denom());
-
-                Ratio::new(numerator, denom)
-            }
-        };
-
-        let share = (sustain_ratio * total).to_integer();
-
-        match (rewards_handling, sustain_purse) {
-            (RewardsHandling::Sustain { .. }, Some(sustain_purse)) => {
-                self.mint_into_existing_purse(share, sustain_purse)?;
-            }
-            (RewardsHandling::Sustain { .. }, None) => return Err(Error::MintReward),
-            (RewardsHandling::Standard, _) => {}
         }
 
         debug!("reading seigniorage recipients snapshot");
@@ -692,7 +635,6 @@ pub trait Auction:
                     current_era_id,
                     &amounts,
                     &SeigniorageRecipientsSnapshot::V2(seigniorage_recipients_snapshot.clone()),
-                    sustain_ratio,
                 )
                 .map(|infos| infos.into_iter().map(move |info| (proposer.clone(), info)))
             })

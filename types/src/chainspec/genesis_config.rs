@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     AdministratorAccount, Chainspec, GenesisAccount, GenesisValidator, HoldBalanceHandling, Motes,
-    PublicKey, RewardsHandling, SystemConfig, WasmConfig,
+    PublicKey, SystemConfig, WasmConfig,
 };
 
 use super::StorageCosts;
@@ -32,8 +32,7 @@ pub struct GenesisConfig {
     genesis_timestamp_millis: u64,
     gas_hold_balance_handling: HoldBalanceHandling,
     gas_hold_interval_millis: u64,
-    enable_addressable_entity: bool,
-    rewards_ratio: Option<Ratio<u64>>,
+    addressable_entity_enabled: bool,
     storage_costs: StorageCosts,
 }
 
@@ -52,8 +51,7 @@ impl GenesisConfig {
         genesis_timestamp_millis: u64,
         gas_hold_balance_handling: HoldBalanceHandling,
         gas_hold_interval_millis: u64,
-        enable_addressable_entity: bool,
-        rewards_handling: Option<Ratio<u64>>,
+        addressable_entity_enabled: bool,
         storage_costs: StorageCosts,
     ) -> GenesisConfig {
         GenesisConfig {
@@ -68,8 +66,7 @@ impl GenesisConfig {
             genesis_timestamp_millis,
             gas_hold_balance_handling,
             gas_hold_interval_millis,
-            enable_addressable_entity,
-            rewards_ratio: rewards_handling,
+            addressable_entity_enabled,
             storage_costs,
         }
     }
@@ -163,12 +160,12 @@ impl GenesisConfig {
 
     /// Enable entity.
     pub fn enable_entity(&self) -> bool {
-        self.enable_addressable_entity
+        self.addressable_entity_enabled
     }
 
     /// Set enable entity.
     pub fn set_enable_entity(&mut self, enable: bool) {
-        self.enable_addressable_entity = enable
+        self.addressable_entity_enabled = enable
     }
 
     /// Push genesis validator.
@@ -184,13 +181,6 @@ impl GenesisConfig {
         {
             genesis_account.try_set_validator(genesis_validator);
         }
-    }
-
-    pub fn rewards_ratio(&self) -> Option<Ratio<u64>> {
-        self.rewards_ratio
-    }
-    pub fn push_rewards_ratio(&mut self, rewards_ratio: Ratio<u64>) {
-        self.rewards_ratio = Some(rewards_ratio);
     }
 }
 
@@ -235,8 +225,7 @@ impl Distribution<GenesisConfig> for Standard {
             genesis_timestamp_millis,
             gas_hold_balance_handling,
             gas_hold_interval_millis,
-            enable_addressable_entity: false,
-            rewards_ratio: None,
+            addressable_entity_enabled: false,
             storage_costs,
         }
     }
@@ -251,10 +240,6 @@ impl From<&Chainspec> for GenesisConfig {
             .map_or(0, |timestamp| timestamp.millis());
         let gas_hold_interval_millis = chainspec.core_config.gas_hold_interval.millis();
         let gas_hold_balance_handling = chainspec.core_config.gas_hold_balance_handling;
-        let rewards_ratio = match chainspec.core_config.rewards_handling {
-            RewardsHandling::Standard => None,
-            RewardsHandling::Sustain { ratio, .. } => Some(ratio),
-        };
         let storage_costs = chainspec.storage_costs;
         GenesisConfig {
             accounts: chainspec.network_config.accounts_config.clone().into(),
@@ -268,8 +253,7 @@ impl From<&Chainspec> for GenesisConfig {
             genesis_timestamp_millis,
             gas_hold_balance_handling,
             gas_hold_interval_millis,
-            enable_addressable_entity: chainspec.core_config.enable_addressable_entity,
-            rewards_ratio,
+            addressable_entity_enabled: chainspec.core_config.addressable_entity_enabled,
             storage_costs,
         }
     }

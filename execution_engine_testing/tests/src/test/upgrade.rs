@@ -2,8 +2,6 @@ use casper_engine_test_support::{
     ExecuteRequestBuilder, LmdbWasmTestBuilder, TransferRequestBuilder, UpgradeRequestBuilder,
     DEFAULT_ACCOUNT_ADDR, LOCAL_GENESIS_REQUEST, MINIMUM_ACCOUNT_CREATION_BALANCE,
 };
-use num_rational::Ratio;
-use std::collections::BTreeMap;
 
 use crate::lmdb_fixture;
 use casper_execution_engine::{
@@ -14,13 +12,9 @@ use casper_execution_engine::{
 use casper_types::{
     account::AccountHash,
     addressable_entity::{AssociatedKeys, Weight},
-    bytesrepr::{Bytes, FromBytes},
     contracts::ContractPackageHash,
-    runtime_args,
-    system::mint::MINT_SUSTAIN_PURSE_KEY,
-    AccessRights, AddressableEntityHash, CLValue, EntityVersion, EraId, HoldBalanceHandling, Key,
-    PackageHash, ProtocolVersion, RewardsHandling, RuntimeArgs, StoredValue, Timestamp, URef,
-    ENTITY_INITIAL_VERSION, REWARDS_HANDLING_RATIO_TAG,
+    runtime_args, AddressableEntityHash, CLValue, EntityVersion, EraId, HoldBalanceHandling, Key,
+    PackageAddr, ProtocolVersion, RuntimeArgs, StoredValue, Timestamp, ENTITY_INITIAL_VERSION,
 };
 
 const DO_NOTHING_STORED_CONTRACT_NAME: &str = "do_nothing_stored";
@@ -208,7 +202,7 @@ fn should_upgrade_do_nothing_to_do_something_contract_call() {
         .get(DO_NOTHING_CONTRACT_NAME)
         .expect("should have key of do_nothing_hash")
         .into_hash_addr()
-        .map(PackageHash::new)
+        .map(PackageAddr::new)
         .expect("should have hash");
 
     // Calling initial stored version from contract package hash, should have no effects
@@ -267,7 +261,7 @@ fn should_upgrade_do_nothing_to_do_something_contract_call() {
         .get(DO_NOTHING_CONTRACT_NAME)
         .expect("should have key of do_nothing_hash")
         .into_hash_addr()
-        .map(PackageHash::new)
+        .map(PackageAddr::new)
         .expect("should have hash");
 
     // Calling upgraded stored version, expecting purse creation
@@ -346,7 +340,7 @@ fn should_be_able_to_observe_state_transition_across_upgrade() {
         .get(HASH_KEY_NAME)
         .expect("should have stored uref")
         .into_hash_addr()
-        .map(PackageHash::new)
+        .map(PackageAddr::new)
         .expect("should have hash");
 
     // verify version before upgrade
@@ -486,7 +480,7 @@ fn should_support_extending_functionality() {
                 *DEFAULT_ACCOUNT_ADDR,
                 &contract_name,
                 runtime_args! {
-                    ARG_CONTRACT_PACKAGE => PackageHash::new(stored_package_hash),
+                    ARG_CONTRACT_PACKAGE => PackageAddr::new(stored_package_hash),
                 },
             )
             .build()
@@ -590,7 +584,7 @@ fn should_maintain_named_keys_across_upgrade() {
         .get(HASH_KEY_NAME)
         .expect("should have stored package hash")
         .into_hash_addr()
-        .map(PackageHash::new)
+        .map(PackageAddr::new)
         .expect("should have hash");
 
     // add several purse urefs to named_keys
@@ -683,12 +677,12 @@ fn should_fail_upgrade_for_locked_contract() {
         .get_entity_with_named_keys_by_account_hash(*DEFAULT_ACCOUNT_ADDR)
         .expect("should have account");
 
-    let stored_package_hash: PackageHash = account
+    let stored_package_hash: PackageAddr = account
         .named_keys()
         .get(HASH_KEY_NAME)
         .expect("should have stored package hash")
         .into_hash_addr()
-        .map(PackageHash::new)
+        .map(PackageAddr::new)
         .expect("should have hash");
 
     let contract_package = builder
@@ -733,7 +727,7 @@ fn should_only_upgrade_if_threshold_is_met() {
 
     builder.run_genesis(LOCAL_GENESIS_REQUEST.clone());
 
-    if !builder.chainspec().core_config.enable_addressable_entity {
+    if !builder.chainspec().core_config.addressable_entity_enabled {
         return;
     }
 
@@ -763,7 +757,6 @@ fn should_only_upgrade_if_threshold_is_met() {
         .get(PACKAGE_HASH_KEY_NAME)
         .expect("must have named key entry for package hash")
         .into_package_addr()
-        .map(PackageHash::new)
         .expect("must get package hash");
 
     let upgrade_threshold_contract_entity = builder
@@ -884,7 +877,7 @@ fn setup_upgrade_threshold_state() -> (LmdbWasmTestBuilder, AccountHash) {
         .with_activation_point(activation_point)
         .with_new_gas_hold_handling(HoldBalanceHandling::Accrued)
         .with_new_gas_hold_interval(24 * 60 * 60 * 60)
-        .with_enable_addressable_entity(true)
+        .with_addressable_entity_enabled(true)
         .build();
 
     builder
@@ -905,7 +898,7 @@ fn setup_upgrade_threshold_state() -> (LmdbWasmTestBuilder, AccountHash) {
 fn should_correctly_set_upgrade_threshold_on_entity_upgrade() {
     let (mut builder, entity_1) = setup_upgrade_threshold_state();
 
-    if !builder.chainspec().core_config.enable_addressable_entity {
+    if !builder.chainspec().core_config.addressable_entity_enabled {
         return;
     }
 
@@ -926,7 +919,7 @@ fn should_correctly_set_upgrade_threshold_on_entity_upgrade() {
         .get(HASH_KEY_NAME)
         .expect("should have stored package hash")
         .into_hash_addr()
-        .map(PackageHash::new)
+        .map(PackageAddr::new)
         .expect("should have hash");
 
     let exec_request = ExecuteRequestBuilder::standard(
@@ -996,7 +989,7 @@ enum MigrationScenario {
 fn call_and_migrate_purse_holder_contract(migration_scenario: MigrationScenario) {
     let (mut builder, _) = setup_upgrade_threshold_state();
 
-    if !builder.chainspec().core_config.enable_addressable_entity {
+    if !builder.chainspec().core_config.addressable_entity_enabled {
         return;
     }
 
@@ -1020,7 +1013,7 @@ fn call_and_migrate_purse_holder_contract(migration_scenario: MigrationScenario)
         .get(HASH_KEY_NAME)
         .expect("must have package named key entry")
         .into_hash_addr()
-        .map(PackageHash::new)
+        .map(PackageAddr::new)
         .unwrap();
 
     let execute_request = match migration_scenario {
@@ -1171,7 +1164,6 @@ fn should_correctly_retain_disabled_contract_version() {
         .with_activation_point(activation_point)
         .with_new_gas_hold_handling(HoldBalanceHandling::Accrued)
         .with_new_gas_hold_interval(24 * 60 * 60 * 60)
-        .with_enable_addressable_entity(true)
         .build();
 
     builder
@@ -1248,7 +1240,7 @@ fn setup_state_for_version_tests(
         .with_activation_point(activation_point)
         .with_new_gas_hold_handling(HoldBalanceHandling::Accrued)
         .with_new_gas_hold_interval(24 * 60 * 60 * 60)
-        .with_enable_addressable_entity(false)
+        .with_addressable_entity_enabled(false)
         .build();
 
     let config = EngineConfigBuilder::new()
@@ -1585,53 +1577,19 @@ fn should_not_require_subsequent_cases(trap: bool) {
 
     let activation_point = EraId::new(0u64);
 
-    let sustain_uref = URef::new([6u8; 32], AccessRights::all());
-
-    let sustain_ratio = Ratio::new(2, 8);
-    let rewards_handling = RewardsHandling::Sustain {
-        ratio: sustain_ratio,
-        purse_address: sustain_uref.to_formatted_string(),
-    };
-
     let mut upgrade_request = UpgradeRequestBuilder::new()
         .with_current_protocol_version(previous_protocol_version)
         .with_new_protocol_version(new_protocol_version)
         .with_activation_point(activation_point)
         .with_new_gas_hold_handling(HoldBalanceHandling::Accrued)
         .with_new_gas_hold_interval(24 * 60 * 60 * 60)
-        .with_enable_addressable_entity(false)
-        .with_rewards_handling(rewards_handling)
+        .with_addressable_entity_enabled(false)
         .build();
 
     builder
         .with_block_time(Timestamp::now().into())
         .upgrade_using_scratch(&mut upgrade_request)
         .expect_upgrade_success();
-
-    let actual_ratio = builder
-        .query(None, Key::RewardsHandling, &[])
-        .expect("must have stored value as part of the upgrade")
-        .as_cl_value()
-        .expect("must get cl value")
-        .to_t::<BTreeMap<u8, Bytes>>()
-        .expect("must get btree map")
-        .get(&REWARDS_HANDLING_RATIO_TAG)
-        .map(|bytes| Ratio::<u64>::from_bytes(bytes).expect("failed to deserialize rewards ratio"))
-        .map(|(ratio, _)| ratio)
-        .expect("must get ratio");
-
-    assert_eq!(sustain_ratio, actual_ratio);
-
-    let actual_sustain_purse = *builder
-        .get_entity_with_named_keys_by_entity_hash(builder.get_mint_contract_hash())
-        .expect("must get mint entity")
-        .named_keys()
-        .get(MINT_SUSTAIN_PURSE_KEY)
-        .expect("must have key entry")
-        .as_uref()
-        .expect("must be able to convert to uref");
-
-    assert_eq!(actual_sustain_purse, sustain_uref);
 
     let config = EngineConfigBuilder::new()
         .with_protocol_version(new_protocol_version)

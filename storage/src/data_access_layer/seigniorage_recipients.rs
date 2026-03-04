@@ -2,7 +2,6 @@
 
 use crate::tracking_copy::TrackingCopyError;
 use casper_types::{system::auction::SeigniorageRecipientsSnapshot, Digest};
-use num_rational::Ratio;
 use std::fmt::{Display, Formatter};
 
 /// Request for seigniorage recipients.
@@ -38,8 +37,6 @@ pub enum SeigniorageRecipientsResult {
     Success {
         /// Seigniorage recipients.
         seigniorage_recipients: SeigniorageRecipientsSnapshot,
-        /// The rewards ratio for the given snapshot
-        rewards_ratio: Ratio<u64>,
     },
 }
 
@@ -58,7 +55,6 @@ impl SeigniorageRecipientsResult {
             | SeigniorageRecipientsResult::Failure(_) => None,
             SeigniorageRecipientsResult::Success {
                 seigniorage_recipients,
-                ..
             } => Some(seigniorage_recipients),
         }
     }

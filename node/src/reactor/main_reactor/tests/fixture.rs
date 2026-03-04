@@ -23,9 +23,9 @@ use casper_types::{
     system::auction::{DelegationRate, DelegatorKind},
     testing::TestRng,
     AccountConfig, AccountsConfig, ActivationPoint, AddressableEntityHash, Block, BlockBody,
-    BlockHash, BlockV2, CLValue, Chainspec, ChainspecRawBytes, EraId, Key, Motes, NextUpgrade,
-    ProtocolVersion, PublicKey, SecretKey, StoredValue, SystemHashRegistry, TimeDiff, Timestamp,
-    Transaction, TransactionHash, ValidatorConfig, U512,
+    BlockHash, BlockV2, CLValue, Chainspec, ChainspecRawBytes, EraEnd, EraId, Key, Motes,
+    NextUpgrade, ProtocolVersion, PublicKey, SecretKey, StoredValue, SystemHashRegistry, TimeDiff,
+    Timestamp, Transaction, TransactionHash, ValidatorConfig, U512,
 };
 
 use crate::{
@@ -103,7 +103,7 @@ impl TestFixture {
             .map(|(secret_key, stake)| {
                 (
                     PublicKey::from(secret_key.as_ref()),
-                    (U512::from(700_000_000_000_000_000u64), stake),
+                    (U512::from(100_000_000_000_000_000u64), stake),
                 )
             })
             .collect();
@@ -174,6 +174,7 @@ impl TestFixture {
             chain_name,
             gas_hold_balance_handling,
             transaction_v1_override,
+            vm_casper_v2,
             node_config_override,
         } = spec_override.unwrap_or_default();
         if era_duration != TimeDiff::from_millis(0) {
@@ -195,6 +196,7 @@ impl TestFixture {
         chainspec.vacancy_config.lower_threshold = lower_threshold;
         chainspec.transaction_config.block_gas_limit = block_gas_limit;
         chainspec.transaction_config.max_block_size = max_block_size;
+        chainspec.transaction_config.runtime_config.vm_casper_v2 = vm_casper_v2;
         chainspec.highway_config.maximum_round_length =
             chainspec.core_config.minimum_block_time * 2;
         chainspec.core_config.signature_rewards_max_delay = signature_rewards_max_delay;
@@ -397,9 +399,13 @@ impl TestFixture {
         };
         let NodeConfigOverride {
             sync_handling_override,
+            idle_tolerance,
         } = node_config_override;
         if let Some(sync_handling) = sync_handling_override {
             cfg.node.sync_handling = sync_handling;
+        }
+        if let Some(idle) = idle_tolerance {
+            cfg.node.idle_tolerance = idle
         }
 
         // Additionally set up storage in a temporary directory.
@@ -906,6 +912,60 @@ impl TestFixture {
             .storage()
             .read_execution_result(txn_hash)
             .expect("node 0 should have given execution result")
+    }
+
+    pub(crate) fn delete_block_utilization_score_by_block_hash_in_node(
+        &mut self,
+        node_public_key: &PublicKey,
+        block_hash: BlockHash,
+    ) {
+        let (_, runner) = self
+            .network
+            .nodes_mut()
+            .iter_mut()
+            .find(|(_, runner)| runner.main_reactor().consensus.public_key() == node_public_key)
+            .expect("should have runner");
+
+        runner
+            .main_reactor_as_mut()
+            .storage
+            .delete_block_utilization_score_by_block_hash(block_hash)
+    }
+
+    pub(crate) async fn check_gas_price_for_nodes(
+        &mut self,
+        expected_gas_price: u8,
+        within: Duration,
+    ) {
+        self.try_run_until(
+            move |nodes| {
+                nodes.values().all(|runner| {
+                    let era_end = runner
+                        .main_reactor()
+                        .storage()
+                        .read_highest_switch_block_headers(1)
+                        .unwrap()
+                        .last()
+                        .expect("must have block header")
+                        .clone_era_end()
+                        .expect("must have era end for switch block");
+
+                    if let EraEnd::V2(era_end) = era_end {
+                        era_end.next_era_gas_price() == expected_gas_price
+                    } else {
+                        false
+                    }
+                })
+            },
+            within,
+        )
+        .await
+        .unwrap_or_else(|_| {
+            panic!(
+                "should have same gas price across all nodes within {} seconds",
+                within.as_secs_f64(),
+            )
+        })
     }
 
     #[inline(always)]

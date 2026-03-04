@@ -1285,14 +1285,13 @@ where
             let snapshot_request =
                 SeigniorageRecipientsRequest::new(*parent_header.state_root_hash());
 
-            let (snapshot, rewards_ratio) = match effect_builder
+            let snapshot = match effect_builder
                 .get_seigniorage_recipients_snapshot_from_contract_runtime(snapshot_request)
                 .await
             {
                 SeigniorageRecipientsResult::Success {
                     seigniorage_recipients,
-                    rewards_ratio,
-                } => (seigniorage_recipients, rewards_ratio),
+                } => seigniorage_recipients,
                 SeigniorageRecipientsResult::RootNotFound => {
                     return BinaryResponse::new_error(ErrorCode::RootNotFound)
                 }
@@ -1339,7 +1338,6 @@ where
                 header.era_id(),
                 validator_rewards,
                 &snapshot,
-                rewards_ratio,
             );
             match (reward, seigniorage_recipient) {
                 (Ok(Some(reward)), Some(seigniorage_recipient)) => {
