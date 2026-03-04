@@ -10,7 +10,7 @@
     )),
     no_std
 )]
-#![doc(html_root_url = "https://docs.rs/casper-types/8.0.0")]
+#![doc(html_root_url = "https://docs.rs/casper-types/6.1.0")]
 #![doc(
     html_favicon_url = "https://raw.githubusercontent.com/casper-network/casper-node/blob/dev/images/Casper_Logo_Favicon_48.png",
     html_logo_url = "https://raw.githubusercontent.com/casper-network/casper-node/blob/dev/images/Casper_Logo_Favicon.png"
@@ -59,7 +59,6 @@ mod package;
 mod peers_map;
 mod phase;
 mod protocol_version;
-pub mod public_key;
 pub mod runtime_footprint;
 mod semver;
 pub(crate) mod serde_helpers;
@@ -72,7 +71,6 @@ mod timestamp;
 mod transaction;
 mod transfer;
 mod transfer_result;
-pub mod type_definitions;
 mod uint;
 mod uref;
 mod validator_change;
@@ -91,9 +89,8 @@ pub use account::Account;
 #[doc(inline)]
 pub use addressable_entity::{
     AddressableEntity, AddressableEntityHash, ContractRuntimeTag, EntityAddr, EntityEntryPoint,
-    EntityEntryPointV2, EntityEntryPointV2Flags, EntityKind, EntryPointAccess, EntryPointAddr,
-    EntryPointPayment, EntryPointType, EntryPointValue, EntryPoints, Parameter, Parameters,
-    DEFAULT_ENTRY_POINT_NAME,
+    EntityKind, EntryPointAccess, EntryPointAddr, EntryPointPayment, EntryPointType,
+    EntryPointValue, EntryPoints, Parameter, Parameters, DEFAULT_ENTRY_POINT_NAME,
 };
 #[doc(inline)]
 pub use api_error::ApiError;
@@ -130,14 +127,14 @@ pub use chainspec::{
     BrTableCost, Chainspec, ChainspecRawBytes, ChainspecRegistry, ConsensusProtocolName,
     ControlFlowCosts, CoreConfig, DelegatorConfig, DeployConfig, FeeHandling, GenesisAccount,
     GenesisConfig, GenesisValidator, GlobalStateUpdate, GlobalStateUpdateConfig,
-    GlobalStateUpdateError, HandlePaymentCosts, HighwayConfig, HoldBalanceHandling,
-    HostFFIFunctionCost, HostFFIFunctionCosts, HostFunction, HostFunctionCost, HostFunctionCostsV1,
+    GlobalStateUpdateError, HandlePaymentCosts, HighwayConfig, HoldBalanceHandling, HostFunction,
+    HostFunctionCost, HostFunctionCostsV1, HostFunctionCostsV2, HostFunctionV2,
     LegacyRequiredFinality, MessageLimits, MintCosts, NetworkConfig, NextUpgrade, OpcodeCosts,
-    PricingHandling, ProtocolConfig, ProtocolUpgradeConfig, RefundHandling, StandardPaymentCosts,
-    StorageCosts, SystemConfig, TransactionConfig, TransactionLaneDefinition, TransactionV1Config,
-    VacancyConfig, ValidatorConfig, WasmConfig, WasmV1Config, WasmV2Config,
+    PricingHandling, ProtocolConfig, ProtocolUpgradeConfig, RefundHandling, RewardsHandling,
+    StandardPaymentCosts, StorageCosts, SystemConfig, TransactionConfig, TransactionLaneDefinition,
+    TransactionV1Config, VacancyConfig, ValidatorConfig, WasmConfig, WasmV1Config, WasmV2Config,
     DEFAULT_BASELINE_MOTES_AMOUNT, DEFAULT_GAS_HOLD_INTERVAL, DEFAULT_HOST_FUNCTION_NEW_DICTIONARY,
-    DEFAULT_MINIMUM_BID_AMOUNT, DEFAULT_REFUND_HANDLING,
+    DEFAULT_MINIMUM_BID_AMOUNT, DEFAULT_REFUND_HANDLING, REWARDS_HANDLING_RATIO_TAG,
 };
 #[cfg(any(all(feature = "std", feature = "testing"), test))]
 pub use chainspec::{
@@ -172,19 +169,19 @@ pub use gas::Gas;
 pub use json_pretty_printer::json_pretty_print;
 #[doc(inline)]
 pub use key::{
-    DictionaryAddr, FromStrError as KeyFromStrError, HashAddr, Key, KeyTag, BLAKE2B_DIGEST_LENGTH,
-    DICTIONARY_ITEM_KEY_MAX_LENGTH, KEY_DICTIONARY_LENGTH, KEY_HASH_LENGTH,
+    DictionaryAddr, FromStrError as KeyFromStrError, HashAddr, Key, KeyTag, PackageAddr,
+    BLAKE2B_DIGEST_LENGTH, DICTIONARY_ITEM_KEY_MAX_LENGTH, KEY_DICTIONARY_LENGTH, KEY_HASH_LENGTH,
 };
 pub use motes::Motes;
 #[doc(inline)]
 pub use package::{
-    EntityVersion, EntityVersionKey, EntityVersions, Group, Groups, Package, PackageAddr,
+    EntityVersion, EntityVersionKey, EntityVersions, Group, Groups, Package, PackageHash,
     PackageStatus, ENTITY_INITIAL_VERSION,
 };
 pub use peers_map::{PeerEntry, Peers};
 pub use phase::{Phase, PHASE_SERIALIZED_LENGTH};
 pub use protocol_version::{ProtocolVersion, VersionCheckResult};
-pub use runtime_footprint::{RuntimeFootprint, NAME_FOR_V2_CONTRACT_MAIN_PURSE};
+pub use runtime_footprint::RuntimeFootprint;
 pub use semver::{ParseSemVerError, SemVer, SEM_VER_SERIALIZED_LENGTH};
 pub use stored_value::{
     GlobalStateIdentifier, StoredValue, StoredValueTag, TypeMismatch as StoredValueTypeMismatch,
@@ -211,10 +208,6 @@ pub use transfer::{
     Transfer, TransferAddr, TransferFromStrError, TransferV1, TransferV2, TRANSFER_ADDR_LENGTH,
 };
 pub use transfer_result::{TransferResult, TransferredTo};
-pub use type_definitions::{
-    EnumVariant as TypeEnumVariant, Primitive as TypePrimitive, StructField as TypeStructField,
-    TypeDefinition, TypeDefinitionKind, TypeMessage, TypeUid,
-};
 pub use uref::{
     FromStrError as URefFromStrError, URef, URefAddr, UREF_ADDR_LENGTH, UREF_SERIALIZED_LENGTH,
 };

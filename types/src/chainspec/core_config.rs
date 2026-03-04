@@ -17,6 +17,7 @@ use serde::{
 use crate::testing::TestRng;
 use crate::{
     bytesrepr::{self, FromBytes, ToBytes},
+    chainspec::rewards_handling::RewardsHandling,
     ProtocolVersion, PublicKey, TimeDiff, U512,
 };
 
@@ -191,6 +192,8 @@ pub struct CoreConfig {
     /// The flag on whether the engine will return an error for multiple
     /// entity versions.
     pub trap_on_ambiguous_entity_version: bool,
+    #[cfg_attr(feature = "datasize", data_size(skip))]
+    pub rewards_handling: RewardsHandling,
 }
 
 impl CoreConfig {
@@ -336,6 +339,7 @@ impl CoreConfig {
             addressable_entity_enabled: DEFAULT_ENABLE_ENTITY,
             baseline_motes_amount: DEFAULT_BASELINE_MOTES_AMOUNT,
             trap_on_ambiguous_entity_version: false,
+            rewards_handling: RewardsHandling::Standard,
         }
     }
 }
@@ -383,6 +387,7 @@ impl Default for CoreConfig {
             addressable_entity_enabled: DEFAULT_ENABLE_ENTITY,
             baseline_motes_amount: DEFAULT_BASELINE_MOTES_AMOUNT,
             trap_on_ambiguous_entity_version: false,
+            rewards_handling: RewardsHandling::Standard,
         }
     }
 }
@@ -432,6 +437,7 @@ impl ToBytes for CoreConfig {
         buffer.extend(self.addressable_entity_enabled.to_bytes()?);
         buffer.extend(self.baseline_motes_amount.to_bytes()?);
         buffer.extend(self.trap_on_ambiguous_entity_version.to_bytes()?);
+        buffer.extend(self.rewards_handling.to_bytes()?);
         Ok(buffer)
     }
 
@@ -477,6 +483,7 @@ impl ToBytes for CoreConfig {
             + self.addressable_entity_enabled.serialized_length()
             + self.baseline_motes_amount.serialized_length()
             + self.trap_on_ambiguous_entity_version.serialized_length()
+            + self.rewards_handling.serialized_length()
     }
 }
 
@@ -522,6 +529,7 @@ impl FromBytes for CoreConfig {
         let (addressable_entity_enabled, remainder) = FromBytes::from_bytes(remainder)?;
         let (baseline_motes_amount, remainder) = u64::from_bytes(remainder)?;
         let (trap_on_ambiguous_entity_version, remainder) = bool::from_bytes(remainder)?;
+        let (rewards_handling, remainder) = RewardsHandling::from_bytes(remainder)?;
         let config = CoreConfig {
             era_duration,
             minimum_era_height,
@@ -562,6 +570,7 @@ impl FromBytes for CoreConfig {
             addressable_entity_enabled,
             baseline_motes_amount,
             trap_on_ambiguous_entity_version,
+            rewards_handling,
         };
         Ok((config, remainder))
     }

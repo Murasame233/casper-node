@@ -11,26 +11,26 @@ use casper_execution_engine::engine_state::engine_config::DEFAULT_ENABLE_ENTITY;
 use num_rational::Ratio;
 
 use casper_storage::{
-    data_access_layer::TransferRequest, system::runtime_native::TransferConfig, RuntimeNativeConfig,
+    data_access_layer::TransferRequest,
+    system::runtime_native::{Config as NativeRuntimeConfig, TransferConfig},
 };
 use casper_types::{
     account::AccountHash,
     bytesrepr::ToBytes,
     system::mint::{ARG_AMOUNT, ARG_ID, ARG_SOURCE, ARG_TARGET},
     BlockTime, CLValue, Digest, FeeHandling, Gas, InitiatorAddr, ProtocolVersion, RefundHandling,
-    RuntimeArgs, TransactionHash, TransactionV1Hash, TransferTarget, URef,
+    RewardsHandling, RuntimeArgs, TransactionHash, TransactionV1Hash, TransferTarget, URef,
     DEFAULT_GAS_HOLD_INTERVAL, U512,
 };
 
 use crate::{
-    DEFAULT_ACCOUNT_ADDR, DEFAULT_ACCOUNT_PUBLIC_KEY, DEFAULT_BLOCK_TIME,
-    DEFAULT_MAXIMUM_DELEGATION_AMOUNT, DEFAULT_MINIMUM_DELEGATION_AMOUNT, DEFAULT_PROTOCOL_VERSION,
+    DEFAULT_ACCOUNT_ADDR, DEFAULT_ACCOUNT_PUBLIC_KEY, DEFAULT_BLOCK_TIME, DEFAULT_PROTOCOL_VERSION,
 };
 
 /// Builds a [`TransferRequest`].
 #[derive(Debug)]
 pub struct TransferRequestBuilder {
-    config: RuntimeNativeConfig,
+    config: NativeRuntimeConfig,
     state_hash: Digest,
     block_time: BlockTime,
     protocol_version: ProtocolVersion,
@@ -43,8 +43,7 @@ pub struct TransferRequestBuilder {
 
 impl TransferRequestBuilder {
     /// The default value used for `TransferRequest::config`.
-    pub const DEFAULT_CONFIG: RuntimeNativeConfig = RuntimeNativeConfig::new(
-        DEFAULT_PROTOCOL_VERSION,
+    pub const DEFAULT_CONFIG: NativeRuntimeConfig = NativeRuntimeConfig::new(
         TransferConfig::Unadministered,
         FeeHandling::PayToProposer,
         RefundHandling::Refund {
@@ -55,13 +54,14 @@ impl TransferRequestBuilder {
         true,
         0,
         500_000_000_000,
-        DEFAULT_MINIMUM_DELEGATION_AMOUNT,
-        DEFAULT_MAXIMUM_DELEGATION_AMOUNT,
+        500_000_000_000,
+        1_000_000_000_000_000_000,
         DEFAULT_GAS_HOLD_INTERVAL.millis(),
         false,
         Ratio::new_raw(U512::zero(), U512::zero()),
         DEFAULT_ENABLE_ENTITY,
         2_500_000_000,
+        RewardsHandling::Standard,
     );
     /// The default value used for `TransferRequest::state_hash`.
     pub const DEFAULT_STATE_HASH: Digest = Digest::from_raw([1; 32]);
@@ -99,8 +99,8 @@ impl TransferRequestBuilder {
         }
     }
 
-    /// Sets the runtime native config of the [`TransferRequest`].
-    pub fn with_runtime_native_config(mut self, config: RuntimeNativeConfig) -> Self {
+    /// Sets the native runtime config of the [`TransferRequest`].
+    pub fn with_native_runtime_config(mut self, config: NativeRuntimeConfig) -> Self {
         self.config = config;
         self
     }
@@ -149,7 +149,7 @@ impl TransferRequestBuilder {
         self
     }
 
-    /// Adds the "id" runtime arg, replacing the existing one if it exists.
+    /// Adds the "id" runtime arg, replacing the existing one if it exists..
     pub fn with_transfer_id(mut self, id: u64) -> Self {
         let value = CLValue::from_t(Some(id)).unwrap();
         let _ = self.args.insert(ARG_ID.to_string(), value);
@@ -198,8 +198,12 @@ impl TransferRequestBuilder {
                         .to_bytes()
                         .unwrap(),
                 );
-                hasher.update(self.config.minimum_delegation_amount().to_bytes().unwrap());
-                hasher.update(self.config.maximum_delegation_amount().to_bytes().unwrap());
+                hasher.update(
+                    self.config
+                        .global_minimum_delegation_amount()
+                        .to_bytes()
+                        .unwrap(),
+                );
                 hasher.update(self.state_hash);
                 hasher.update(self.block_time.to_bytes().unwrap());
                 hasher.update(self.protocol_version.to_bytes().unwrap());

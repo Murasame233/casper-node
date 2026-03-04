@@ -28,7 +28,8 @@ pub struct GenesisConfigBuilder {
     genesis_timestamp_millis: Option<u64>,
     gas_hold_balance_handling: Option<HoldBalanceHandling>,
     gas_hold_interval_millis: Option<u64>,
-    addressable_entity_enabled: Option<bool>,
+    enable_addressable_entity: Option<bool>,
+    rewards_ratio: Option<Ratio<u64>>,
     storage_costs: Option<StorageCosts>,
 }
 
@@ -92,9 +93,15 @@ impl GenesisConfigBuilder {
         self
     }
 
-    /// Sets whether the addressable entity feature is enabled (on) or disabled (off).
-    pub fn with_addressable_entity_enabled(mut self, addressable_entity_enabled: bool) -> Self {
-        self.addressable_entity_enabled = Some(addressable_entity_enabled);
+    /// Sets the enable addressable entity flag.
+    pub fn with_enable_addressable_entity(mut self, enable_addressable_entity: bool) -> Self {
+        self.enable_addressable_entity = Some(enable_addressable_entity);
+        self
+    }
+
+    /// Sets the rewards ratio.
+    pub fn with_rewards_ratio(mut self, rewards_ratio: Ratio<u64>) -> Self {
+        self.rewards_ratio = Some(rewards_ratio);
         self
     }
 
@@ -123,8 +130,9 @@ impl GenesisConfigBuilder {
                 .unwrap_or(DEFAULT_GAS_HOLD_BALANCE_HANDLING),
             self.gas_hold_interval_millis
                 .unwrap_or(DEFAULT_GAS_HOLD_INTERVAL_MILLIS),
-            self.addressable_entity_enabled
+            self.enable_addressable_entity
                 .unwrap_or(DEFAULT_ENABLE_ENTITY),
+            self.rewards_ratio,
             self.storage_costs.unwrap_or_default(),
         )
     }

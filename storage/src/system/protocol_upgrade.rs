@@ -1,8 +1,4 @@
 //! Support for applying upgrades on the execution engine.
-use blake2::{
-    digest::{Update, VariableOutput},
-    Blake2bVar,
-};
 use num_rational::Ratio;
 use std::{
     cell::RefCell,
@@ -17,37 +13,37 @@ use casper_types::{
     addressable_entity::{
         ActionThresholds, AssociatedKeys, EntityKind, NamedKeyAddr, NamedKeyValue, Weight,
     },
-    bytesrepr::{self, ToBytes},
-    contract_messages::MessageTopicSummary,
+    bytesrepr::{self, Bytes, ToBytes},
     contracts::{ContractHash, ContractPackageStatus, NamedKeys},
     system::{
         auction::{
             BidAddr, BidAddrTag, BidKind, DelegatorBid, DelegatorKind,
             SeigniorageRecipientsSnapshotV1, SeigniorageRecipientsSnapshotV2,
-            SeigniorageRecipientsV2, Unbond, ValidatorBid, AUCTION_DELAY_KEY,
-            DEFAULT_SEIGNIORAGE_RECIPIENTS_SNAPSHOT_VERSION, LOCKED_FUNDS_PERIOD_KEY,
+            SeigniorageRecipientsV2, Unbond, UnbondEra, UnbondKind, ValidatorBid,
+            AUCTION_DELAY_KEY, DEFAULT_SEIGNIORAGE_RECIPIENTS_SNAPSHOT_VERSION,
+            ERA_END_TIMESTAMP_MILLIS_KEY, ERA_ID_KEY, LOCKED_FUNDS_PERIOD_KEY,
             SEIGNIORAGE_RECIPIENTS_SNAPSHOT_KEY, SEIGNIORAGE_RECIPIENTS_SNAPSHOT_VERSION_KEY,
             UNBONDING_DELAY_KEY, VALIDATOR_SLOTS_KEY,
         },
         handle_payment::{ACCUMULATION_PURSE_KEY, PAYMENT_PURSE_KEY},
         mint::{
-            MINT_GAS_HOLD_HANDLING_KEY, MINT_GAS_HOLD_INTERVAL_KEY, ROUND_SEIGNIORAGE_RATE_KEY,
-            TOTAL_SUPPLY_KEY,
+            MINT_GAS_HOLD_HANDLING_KEY, MINT_GAS_HOLD_INTERVAL_KEY, MINT_SUSTAIN_PURSE_KEY,
+            ROUND_SEIGNIORAGE_RATE_KEY, TOTAL_SUPPLY_KEY,
         },
         SystemEntityType, AUCTION, HANDLE_PAYMENT, MINT,
     },
-    AccessRights, AddressableEntity, AddressableEntityHash, BlockTime, ByteCode, ByteCodeAddr,
-    ByteCodeHash, ByteCodeKind, CLValue, CLValueError, Contract, Digest, EntityAddr,
-    EntityVersionKey, EntityVersions, EntryPointAddr, EntryPointValue, EntryPoints, FeeHandling,
-    Groups, HashAddr, Key, KeyTag, Motes, Package, PackageAddr, PackageStatus, Phase,
-    ProtocolUpgradeConfig, ProtocolVersion, PublicKey, StoredValue, SystemHashRegistry, URef, U512,
+    AccessRights, AddressableEntity, AddressableEntityHash, ByteCode, ByteCodeAddr, ByteCodeHash,
+    ByteCodeKind, CLValue, CLValueError, Contract, Digest, EntityAddr, EntityVersionKey,
+    EntityVersions, EntryPointAddr, EntryPointValue, EntryPoints, EraId, FeeHandling, Groups,
+    HashAddr, Key, KeyTag, Motes, Package, PackageHash, PackageStatus, Phase,
+    ProtocolUpgradeConfig, ProtocolVersion, PublicKey, RewardsHandling, StoredValue,
+    SystemHashRegistry, URef, REWARDS_HANDLING_RATIO_TAG, U512,
 };
 
 use crate::{
     global_state::state::StateProvider,
-    tracking_copy::{TrackingCopy, TrackingCopyEntityExt, TrackingCopyExt},
-    AddressGenerator, MESSAGING_CONTRACT_ADDR_TOPIC, MESSAGING_CONTRACT_BYTECODE_ADDR_TOPIC,
-    MESSAGING_CONTRACT_VERSION_TOPIC, MESSAGING_PACKAGE_ADDR_TOPIC,
+    tracking_copy::{AddResult, TrackingCopy, TrackingCopyEntityExt, TrackingCopyExt},
+    AddressGenerator,
 };
 
 const NO_CARRY_FORWARD: bool = false;
@@ -92,9 +88,6 @@ pub enum ProtocolUpgradeError {
     /// Tracking copy error.
     #[error("{0}")]
     TrackingCopy(crate::tracking_copy::TrackingCopyError),
-    /// Protocol upgrade applied on empty chain
-    #[error("Protocol upgrade applied on empty chain")]
-    EmptyChain,
 }
 
 impl From<CLValueError> for ProtocolUpgradeError {
@@ -191,7 +184,7 @@ where
         self.handle_global_state_updates();
         let system_entity_addresses = self.handle_system_hashes()?;
 
-        if self.config.addressable_entity_enabled() {
+        if self.config.enable_addressable_entity() {
             self.migrate_system_account(pre_state_hash)?;
             self.create_accumulation_purse_if_required(
                 &system_entity_addresses.handle_payment(),
@@ -221,9 +214,12 @@ where
             self.config.validator_minimum_bid_amount(),
             self.config.minimum_delegation_amount(),
             self.config.maximum_delegation_amount(),
+            system_entity_addresses.auction(),
         )?;
         self.handle_era_info_migration()?;
         self.handle_seignorage_snapshot_migration(system_entity_addresses.auction())?;
+        self.handle_total_supply_calc(system_entity_addresses.mint())?;
+        self.handle_rewards_handling(system_entity_addresses.mint())?;
 
         Ok(self.tracking_copy)
     }
@@ -292,8 +288,6 @@ where
             error!("Missing system handle payment entity hash");
             ProtocolUpgradeError::MissingSystemEntityHash(HANDLE_PAYMENT.to_string())
         })?;
-        let block_time = self.tracking_copy.get_block_time()?.unwrap_or_default();
-        self.create_messaging_topics(block_time)?;
         if let Some(standard_payment_hash) = registry.remove_standard_payment() {
             // Write the chainspec registry to global state
             let cl_value_chainspec_registry = CLValue::from_t(registry)
@@ -320,17 +314,6 @@ where
         let system_hash_addresses = SystemHashAddresses::new(mint, auction, handle_payment);
 
         Ok(system_hash_addresses)
-    }
-
-    fn create_messaging_topics(
-        &mut self,
-        block_time: BlockTime,
-    ) -> Result<(), ProtocolUpgradeError> {
-        self.add_topic_to_system_account(block_time, MESSAGING_PACKAGE_ADDR_TOPIC)?;
-        self.add_topic_to_system_account(block_time, MESSAGING_CONTRACT_ADDR_TOPIC)?;
-        self.add_topic_to_system_account(block_time, MESSAGING_CONTRACT_BYTECODE_ADDR_TOPIC)?;
-        self.add_topic_to_system_account(block_time, MESSAGING_CONTRACT_VERSION_TOPIC)?;
-        Ok(())
     }
 
     /// Bump major version and/or update the entry points for system contracts.
@@ -395,7 +378,8 @@ where
                 }
             };
 
-        let mut package = self.retrieve_system_package(entity.package(), system_entity_type)?;
+        let mut package =
+            self.retrieve_system_package(entity.package_hash(), system_entity_type)?;
 
         let entity_hash = AddressableEntityHash::new(hash_addr);
         let entity_addr = EntityAddr::new_system(entity_hash.value());
@@ -406,7 +390,7 @@ where
         entity.set_protocol_version(self.config.new_protocol_version());
 
         let new_entity = AddressableEntity::new(
-            entity.package(),
+            entity.package_hash(),
             ByteCodeHash::default(),
             self.config.new_protocol_version(),
             URef::default(),
@@ -459,23 +443,23 @@ where
         );
 
         self.tracking_copy.write(
-            Key::Package(entity.package().value().into()),
+            Key::SmartContract(entity.package_hash().value()),
             StoredValue::SmartContract(package),
         );
 
         if must_carry_forward {
             // carry forward
-            let package_key = Key::Package(entity.package().value().into());
+            let package_key = Key::SmartContract(entity.package_hash().value());
             let uref = URef::default();
             let indirection = CLValue::from_t((package_key, uref))
                 .map_err(|cl_error| ProtocolUpgradeError::CLValue(cl_error.to_string()))?;
 
             self.tracking_copy.write(
-                Key::Hash(entity.package().value()),
+                Key::Hash(entity.package_hash().value()),
                 StoredValue::CLValue(indirection),
             );
 
-            let contract_wasm_key = Key::Hash(entity.byte_code().value());
+            let contract_wasm_key = Key::Hash(entity.byte_code_hash().value());
             let contract_wasm_indirection = CLValue::from_t(Key::ByteCode(ByteCodeAddr::Empty))
                 .map_err(|cl_error| ProtocolUpgradeError::CLValue(cl_error.to_string()))?;
             self.tracking_copy.write(
@@ -497,13 +481,13 @@ where
 
     fn retrieve_system_package(
         &mut self,
-        package_hash: PackageAddr,
+        package_hash: PackageHash,
         system_contract_type: SystemEntityType,
     ) -> Result<Package, ProtocolUpgradeError> {
         debug!(%system_contract_type, "retrieve system package");
         if let Some(StoredValue::SmartContract(system_entity)) = self
             .tracking_copy
-            .read(&Key::Package(package_hash.value().into()))
+            .read(&Key::SmartContract(package_hash.value()))
             .map_err(|_| {
                 ProtocolUpgradeError::UnableToRetrieveSystemContractPackage(
                     system_contract_type.to_string(),
@@ -719,7 +703,7 @@ where
         let associated_keys = AssociatedKeys::new(account_hash, Weight::new(1));
         let byte_code_hash = ByteCodeHash::default();
         let entity_hash = AddressableEntityHash::new(PublicKey::System.to_account_hash().value());
-        let package_hash = PackageAddr::new(address_generator.new_hash_address());
+        let package_hash = PackageHash::new(address_generator.new_hash_address());
 
         let byte_code = ByteCode::new(ByteCodeKind::Empty, vec![]);
 
@@ -931,7 +915,7 @@ where
         &mut self,
         contract_hash: HashAddr,
     ) -> Result<NamedKeys, ProtocolUpgradeError> {
-        if self.config.addressable_entity_enabled() {
+        if self.config.enable_addressable_entity() {
             let named_keys = self
                 .tracking_copy
                 .get_named_keys(EntityAddr::System(contract_hash))?;
@@ -1247,10 +1231,11 @@ where
     pub fn handle_bids_migration(
         &mut self,
         validator_minimum: u64,
-        delegation_minimum: u64,
-        delegation_maximum: u64,
+        validator_delegation_minimum: u64,
+        validator_delegation_maximum: u64,
+        auction_hash: HashAddr,
     ) -> Result<(), ProtocolUpgradeError> {
-        if delegation_maximum < delegation_minimum {
+        if validator_delegation_maximum < validator_delegation_minimum {
             return Err(ProtocolUpgradeError::InvalidUpgradeConfig);
         }
         debug!("handle bids migration");
@@ -1285,7 +1270,10 @@ where
                     let inactive = validator_bid.staked_amount() < U512::from(validator_minimum);
                     validator_bid
                         .with_inactive(inactive)
-                        .with_min_max_delegation_amount(delegation_maximum, delegation_minimum)
+                        .with_min_max_delegation_amount(
+                            validator_delegation_maximum,
+                            validator_delegation_minimum,
+                        )
                 };
                 tc.write(
                     validator_bid_addr.into(),
@@ -1332,7 +1320,156 @@ where
                         validator_bid_key,
                         StoredValue::BidKind(BidKind::Validator(Box::new(inactive_bid))),
                     );
+                    continue;
                 }
+
+                let validator_delegation_maximum =
+                    U512::from(validator_bid.maximum_delegation_amount());
+                let validator_delegation_minimum =
+                    U512::from(validator_bid.minimum_delegation_amount());
+
+                // Correct accounts over the max
+                {
+                    let validator_bid_addr = *validator_bid_key
+                        .as_bid_addr()
+                        .ok_or(ProtocolUpgradeError::UnexpectedKeyVariant)?;
+
+                    let prefix = validator_bid_addr
+                        .delegated_account_prefix()
+                        .map_err(|_| ProtocolUpgradeError::UnexpectedKeyVariant)?;
+                    let mut delegated_account_keys = tc
+                        .get_by_byte_prefix(&prefix)
+                        .map_err(|_| ProtocolUpgradeError::UnexpectedKeyVariant)?;
+
+                    let prefix = validator_bid_addr
+                        .delegated_purse_prefix()
+                        .map_err(|_| ProtocolUpgradeError::UnexpectedKeyVariant)?;
+                    let mut delegated_purse_keys = tc
+                        .get_by_byte_prefix(&prefix)
+                        .map_err(|_| ProtocolUpgradeError::UnexpectedKeyVariant)?;
+
+                    delegated_account_keys.append(&mut delegated_purse_keys);
+
+                    let mut delegators = vec![];
+                    for delegator_key in delegated_account_keys {
+                        if let Some(StoredValue::BidKind(BidKind::Delegator(delegator_bid))) = tc
+                            .get(&delegator_key)
+                            .map_err(|_| ProtocolUpgradeError::UnexpectedKeyVariant)?
+                        {
+                            delegators.push(*delegator_bid.clone())
+                        }
+                    }
+
+                    for mut delegator in delegators {
+                        let delegator_staked_amount = delegator.staked_amount();
+                        let unbond_amount =
+                            if delegator_staked_amount < validator_delegation_minimum {
+                                // fully unbond the staked amount as it is below the min
+                                delegator_staked_amount
+                            } else if delegator_staked_amount > validator_delegation_maximum {
+                                // partially unbond the staked amount to not exceed the max
+                                delegator_staked_amount.saturating_sub(validator_delegation_maximum)
+                            } else {
+                                // nothing to unbond
+                                U512::zero()
+                            };
+                        // skip delegators within the range
+                        if unbond_amount.is_zero() {
+                            continue;
+                        }
+
+                        let unbond_kind = delegator.unbond_kind();
+
+                        let auction_named_keys =
+                            tc.get_named_keys(EntityAddr::System(auction_hash))?;
+                        let era_end = {
+                            let key = auction_named_keys
+                                .get(ERA_END_TIMESTAMP_MILLIS_KEY)
+                                .expect("era end key must exist in mint contract's named keys");
+
+                            tc.read(key)
+                                .map_err(ProtocolUpgradeError::TrackingCopy)?
+                                .ok_or(ProtocolUpgradeError::UnexpectedKeyVariant)?
+                                .as_cl_value()
+                                .ok_or(ProtocolUpgradeError::UnexpectedStoredValueVariant)?
+                                .to_t::<u64>()
+                                .map_err(|err| ProtocolUpgradeError::CLValue(err.to_string()))?
+                        };
+
+                        let current_era = {
+                            let key = auction_named_keys
+                                .get(ERA_ID_KEY)
+                                .expect("era end key must exist in mint contract's named keys");
+
+                            tc.read(key)
+                                .map_err(ProtocolUpgradeError::TrackingCopy)?
+                                .ok_or(ProtocolUpgradeError::UnexpectedKeyVariant)?
+                                .as_cl_value()
+                                .ok_or(ProtocolUpgradeError::UnexpectedStoredValueVariant)?
+                                .to_t::<EraId>()
+                                .map_err(|err| ProtocolUpgradeError::CLValue(err.to_string()))?
+                        };
+
+                        let validator_public_key = validator_bid.validator_public_key().clone();
+                        let bid_addr = match &unbond_kind {
+                            UnbondKind::Validator(_) => continue,
+                            UnbondKind::DelegatedPublicKey(pk) => BidAddr::UnbondAccount {
+                                validator: validator_public_key.to_account_hash(),
+                                unbonder: pk.to_account_hash(),
+                            },
+                            UnbondKind::DelegatedPurse(addr) => BidAddr::UnbondPurse {
+                                validator: validator_public_key.to_account_hash(),
+                                unbonder: *addr,
+                            },
+                        };
+
+                        let bonding_purse = *delegator.bonding_purse();
+                        let unbond_era =
+                            UnbondEra::new(bonding_purse, current_era, unbond_amount, None);
+
+                        let unbond = match tc
+                            .read(&Key::BidAddr(bid_addr))
+                            .map_err(ProtocolUpgradeError::TrackingCopy)?
+                        {
+                            Some(StoredValue::BidKind(BidKind::Unbond(unbond))) => {
+                                let mut eras = unbond.take_eras();
+                                eras.push(unbond_era);
+                                Unbond::new(validator_public_key, unbond_kind, eras)
+                            }
+                            Some(_) => continue,
+                            None => {
+                                Unbond::new(validator_public_key, unbond_kind, vec![unbond_era])
+                            }
+                        };
+
+                        tc.write(
+                            Key::BidAddr(bid_addr),
+                            StoredValue::BidKind(BidKind::Unbond(Box::new(unbond))),
+                        );
+
+                        let updated_stake = match delegator.decrease_stake(unbond_amount, era_end) {
+                            Ok(updated_stake) => updated_stake,
+                            Err(error) => {
+                                error!("could not decrease stake for validator; {:?}", error);
+                                continue;
+                            }
+                        };
+
+                        let delegator_bid_addr = delegator.bid_addr();
+                        if updated_stake.is_zero() {
+                            debug!("pruning delegator bid {delegator_bid_addr}");
+                            tc.prune(Key::BidAddr(delegator_bid_addr));
+                        } else {
+                            debug!(
+                "forced undelegation for {delegator_bid_addr} reducing {delegator_staked_amount} by {unbond_amount} to {updated_stake}",
+            );
+                            tc.write(
+                                Key::BidAddr(delegator_bid_addr),
+                                StoredValue::BidKind(BidKind::Delegator(Box::new(delegator))),
+                            );
+                        }
+                    }
+                };
             }
         }
 
@@ -1434,6 +1571,157 @@ where
         Ok(())
     }
 
+    /// Handle total supply calculation.
+    pub fn handle_total_supply_calc(&mut self, mint: HashAddr) -> Result<(), ProtocolUpgradeError> {
+        debug!("handle total supply calculation");
+        let mint_named_keys = self.get_named_keys(mint)?;
+        let tc = &mut self.tracking_copy;
+        let total_supply_key = mint_named_keys
+            .get(TOTAL_SUPPLY_KEY)
+            .expect("total supply key must exist in mint contract's named keys");
+
+        let total_supply = match tc.read(total_supply_key) {
+            Ok(Some(StoredValue::CLValue(cl_value))) => match cl_value.into_t::<U512>() {
+                Ok(total_supply) => total_supply,
+                Err(cve) => {
+                    warn!("total_supply {} not a U512; {}", total_supply_key, cve);
+                    return Err(ProtocolUpgradeError::CLValue(
+                        "total supply is not U512".to_string(),
+                    ));
+                }
+            },
+            Ok(Some(_)) => {
+                error!("total supply is unexpected stored value type");
+                return Err(ProtocolUpgradeError::CLValue(
+                    "total supply is unexpected stored value type".to_string(),
+                ));
+            }
+            Ok(None) => {
+                error!("total supply missing");
+                return Err(ProtocolUpgradeError::CLValue(
+                    "total supply missing".to_string(),
+                ));
+            }
+            Err(err) => {
+                error!("failure to retrieve total supply: {}", err);
+                return Err(ProtocolUpgradeError::CLValue(
+                    "failure to retrieve total supply".to_string(),
+                ));
+            }
+        };
+
+        let balance_keys = match tc.get_keys(&KeyTag::Balance) {
+            Ok(keys) => keys,
+            Err(err) => return Err(ProtocolUpgradeError::TrackingCopy(err)),
+        };
+
+        let mut running_balance = U512::zero();
+        for balance_key in balance_keys {
+            if let Some(StoredValue::CLValue(cl_value)) = tc
+                .get(&balance_key)
+                .map_err(Into::<ProtocolUpgradeError>::into)?
+            {
+                // need to shuck CLValue wrapper and get at interior value.
+                match cl_value.into_t::<U512>() {
+                    Ok(balance) => {
+                        running_balance += balance;
+                    }
+                    Err(cve) => {
+                        warn!("balance of {} not a U512; {}", balance_key, cve);
+                    }
+                }
+            } else {
+                // this should be unreachable. if it is reached the options are halt & catch fire,
+                // or log and keep going. currently opting to log and keep going.
+                error!("failed to find balance value for {}", balance_key);
+            }
+        }
+
+        // compare stored total supply with calculated total
+        // if same, no op
+        if total_supply != running_balance {
+            warn!(
+                "adjusting total supply from {} to {}",
+                total_supply, running_balance
+            );
+
+            let cl_value = CLValue::from_t(running_balance)
+                .expect("new total supply must convert to CLValue.");
+
+            self.tracking_copy
+                .write(*total_supply_key, StoredValue::CLValue(cl_value));
+        } else {
+            debug!("total supply match");
+        }
+
+        Ok(())
+    }
+
+    /// Write or prune away the rewards handling entry in GS.
+    pub fn handle_rewards_handling(&mut self, mint: HashAddr) -> Result<(), ProtocolUpgradeError> {
+        let rewards_handling = self.config.rewards_handling();
+        let rewards_handling_key = self
+            .tracking_copy
+            .read(&Key::RewardsHandling)
+            .map_err(ProtocolUpgradeError::TrackingCopy)?;
+
+        match rewards_handling {
+            RewardsHandling::Standard => {
+                if let Some(StoredValue::CLValue(_)) = rewards_handling_key {
+                    self.tracking_copy.prune(Key::RewardsHandling);
+                }
+            }
+            RewardsHandling::Sustain {
+                ratio,
+                purse_address,
+            } => {
+                let sustain_purse = URef::from_formatted_str(&purse_address).map_err(|_| {
+                    ProtocolUpgradeError::CLValue("unable to create sustain purse".to_string())
+                })?;
+
+                let value = StoredValue::CLValue(
+                    CLValue::from_t((MINT_SUSTAIN_PURSE_KEY.to_string(), Key::URef(sustain_purse)))
+                        .map_err(|_| {
+                            ProtocolUpgradeError::Bytesrepr("sustain purse".to_string())
+                        })?,
+                );
+
+                let mint_key = if self.config.enable_addressable_entity() {
+                    Key::AddressableEntity(EntityAddr::System(mint))
+                } else {
+                    Key::Hash(mint)
+                };
+                match self.tracking_copy.add(mint_key, value) {
+                    Ok(AddResult::Success) => {
+                        info!("Successfully added sustain purse to mint named keys")
+                    }
+                    Ok(_) | Err(_) => {
+                        return Err(ProtocolUpgradeError::CLValue(
+                            "Unable to add sustain purse".to_string(),
+                        ))
+                    }
+                };
+
+                let rewards_ratio: Bytes = ratio
+                    .to_bytes()
+                    .map_err(|err| ProtocolUpgradeError::Bytesrepr(err.to_string()))?
+                    .into();
+                let rewards_handling_map = {
+                    let mut ret = BTreeMap::new();
+                    ret.insert(REWARDS_HANDLING_RATIO_TAG, rewards_ratio);
+                    CLValue::from_t(ret)
+                        .map_err(|cl| ProtocolUpgradeError::CLValue(cl.to_string()))?
+                };
+                self.tracking_copy.write(
+                    Key::RewardsHandling,
+                    StoredValue::CLValue(rewards_handling_map),
+                );
+            }
+        }
+
+        Ok(())
+    }
+
     /// Handle global state updates.
     pub fn handle_global_state_updates(&mut self) {
         debug!("handle global state updates");
@@ -1441,43 +1729,4 @@ where
             self.tracking_copy.write(*key, value.clone());
         }
     }
-
-    fn add_topic_to_system_account(
-        &mut self,
-        block_time: BlockTime,
-        topic_name: &str,
-    ) -> Result<(), ProtocolUpgradeError> {
-        let entity_addr = EntityAddr::new_account(PublicKey::System.to_account_hash().value());
-        let topic_name_hash = blake2b(topic_name.as_bytes()).into();
-        let topic_key = Key::message_topic(entity_addr, topic_name_hash);
-        let maybe_existing_topic = self
-            .tracking_copy
-            .get(&topic_key)
-            .map_err(ProtocolUpgradeError::TrackingCopy)?;
-        if maybe_existing_topic.is_some() {
-            return Ok(());
-        }
-        let summary = StoredValue::MessageTopic(MessageTopicSummary::new(
-            0,
-            block_time,
-            topic_name.to_owned(),
-        ));
-        self.tracking_copy.write(topic_key, summary);
-        Ok(())
-    }
-}
-
-const DIGEST_LENGTH: usize = 32;
-/// The 32-byte digest blake2b hash function
-pub fn blake2b<T: AsRef<[u8]>>(data: T) -> [u8; DIGEST_LENGTH] {
-    let mut result = [0; DIGEST_LENGTH];
-    // NOTE: Assumed safe as `BLAKE2B_DIGEST_LENGTH` is a valid value for a hasher
-    let mut hasher = Blake2bVar::new(DIGEST_LENGTH).expect("should create hasher");
-
-    hasher.update(data.as_ref());
-
-    // NOTE: This should never fail, because result is exactly DIGEST_LENGTH long
-    hasher.finalize_variable(&mut result).ok();
-
-    result
 }

@@ -7,32 +7,31 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     rc::Rc,
 };
-use tracing::error;
 
 use crate::{
     global_state::state::StateProvider,
     system::{
         genesis::{GenesisError, DEFAULT_ADDRESS, NO_WASM},
-        protocol_upgrade::{blake2b, ProtocolUpgradeError},
+        protocol_upgrade::ProtocolUpgradeError,
     },
-    AddressGenerator, TrackingCopy, MESSAGING_CONTRACT_ADDR_TOPIC,
-    MESSAGING_CONTRACT_BYTECODE_ADDR_TOPIC, MESSAGING_CONTRACT_VERSION_TOPIC,
-    MESSAGING_PACKAGE_ADDR_TOPIC,
+    tracking_copy::AddResult,
+    AddressGenerator, TrackingCopy,
 };
 use casper_types::{
     account::AccountHash,
     addressable_entity::{
         ActionThresholds, EntityKindTag, MessageTopics, NamedKeyAddr, NamedKeyValue,
     },
-    contract_messages::MessageTopicSummary,
+    bytesrepr::{Bytes, ToBytes},
     contracts::{
         ContractHash, ContractPackage, ContractPackageHash, ContractPackageStatus,
         ContractVersions, DisabledVersions, NamedKeys,
     },
     execution::Effects,
     system::{
+        auction,
         auction::{
-            self, BidAddr, BidKind, Delegator, DelegatorBid, DelegatorKind, SeigniorageRecipient,
+            BidAddr, BidKind, Delegator, DelegatorBid, DelegatorKind, SeigniorageRecipient,
             SeigniorageRecipientV2, SeigniorageRecipients, SeigniorageRecipientsSnapshot,
             SeigniorageRecipientsSnapshotV2, SeigniorageRecipientsV2, Staking, ValidatorBid,
             AUCTION_DELAY_KEY, DEFAULT_SEIGNIORAGE_RECIPIENTS_SNAPSHOT_VERSION,
@@ -41,19 +40,22 @@ use casper_types::{
             SEIGNIORAGE_RECIPIENTS_SNAPSHOT_KEY, SEIGNIORAGE_RECIPIENTS_SNAPSHOT_VERSION_KEY,
             UNBONDING_DELAY_KEY, VALIDATOR_SLOTS_KEY,
         },
-        handle_payment::{self, ACCUMULATION_PURSE_KEY},
+        handle_payment,
+        handle_payment::ACCUMULATION_PURSE_KEY,
+        mint,
         mint::{
-            self, ARG_ROUND_SEIGNIORAGE_RATE, MINT_GAS_HOLD_HANDLING_KEY,
-            MINT_GAS_HOLD_INTERVAL_KEY, ROUND_SEIGNIORAGE_RATE_KEY, TOTAL_SUPPLY_KEY,
+            ARG_ROUND_SEIGNIORAGE_RATE, MINT_GAS_HOLD_HANDLING_KEY, MINT_GAS_HOLD_INTERVAL_KEY,
+            MINT_SUSTAIN_PURSE_KEY, ROUND_SEIGNIORAGE_RATE_KEY, TOTAL_SUPPLY_KEY,
         },
         standard_payment, SystemEntityType, AUCTION, HANDLE_PAYMENT, MINT, STANDARD_PAYMENT,
     },
     AccessRights, Account, AddressableEntity, AddressableEntityHash, AdministratorAccount,
-    BlockGlobalAddr, BlockTime, ByteCode, ByteCodeAddr, ByteCodeHash, ByteCodeKind, CLValue,
+    BlockGlobalAddr, ByteCode, ByteCodeAddr, ByteCodeHash, ByteCodeKind, CLValue,
     ChainspecRegistry, Contract, ContractWasm, ContractWasmHash, Digest, EntityAddr, EntityKind,
     EntityVersions, EntryPointAddr, EntryPointValue, EntryPoints, EraId, GenesisAccount,
-    GenesisConfig, Groups, HashAddr, Key, Motes, Package, PackageAddr, PackageStatus, Phase,
-    ProtocolVersion, PublicKey, StoredValue, SystemHashRegistry, URef, U512,
+    GenesisConfig, Groups, HashAddr, Key, Motes, Package, PackageHash, PackageStatus, Phase,
+    ProtocolVersion, PublicKey, RewardsHandling, StoredValue, SystemHashRegistry, URef,
+    REWARDS_HANDLING_RATIO_TAG, U512,
 };
 
 pub struct AccountContractInstaller<S>
@@ -96,7 +98,7 @@ where
         self.tracking_copy.borrow().effects()
     }
 
-    fn create_mint(&mut self) -> Result<Key, Box<GenesisError>> {
+    fn create_mint(&mut self) -> Result<(Key, Key), Box<GenesisError>> {
         let round_seigniorage_rate_uref =
             {
                 let round_seigniorage_rate_uref = self
@@ -211,7 +213,7 @@ where
                 .write(Key::SystemEntityRegistry, StoredValue::CLValue(cl_registry));
         }
 
-        Ok(total_supply_uref.into())
+        Ok((total_supply_uref.into(), Key::Hash(mint_hash.value())))
     }
 
     fn create_handle_payment(
@@ -535,45 +537,11 @@ where
         Ok(auction_hash.value())
     }
 
-    fn create_messaging_topics(&self, block_time: BlockTime) -> Result<(), Box<GenesisError>> {
-        self.add_topic_to_system_account(block_time, MESSAGING_PACKAGE_ADDR_TOPIC)?;
-        self.add_topic_to_system_account(block_time, MESSAGING_CONTRACT_ADDR_TOPIC)?;
-        self.add_topic_to_system_account(block_time, MESSAGING_CONTRACT_BYTECODE_ADDR_TOPIC)?;
-
-        self.add_topic_to_system_account(block_time, MESSAGING_CONTRACT_VERSION_TOPIC)?;
-        Ok(())
-    }
-
-    fn add_topic_to_system_account(
-        &self,
-        block_time: BlockTime,
-        topic_name: &str,
-    ) -> Result<(), Box<GenesisError>> {
-        let entity_addr = EntityAddr::new_account(PublicKey::System.to_account_hash().value());
-        let topic_name_hash = blake2b(topic_name.as_bytes()).into();
-        let topic_key = Key::message_topic(entity_addr, topic_name_hash);
-        let maybe_existing_topic = self
-            .tracking_copy
-            .borrow_mut()
-            .get(&topic_key)
-            .map_err(|err| Box::new(GenesisError::TrackingCopy(err)))?;
-        if maybe_existing_topic.is_some() {
-            return Ok(());
-        }
-        let summary = StoredValue::MessageTopic(MessageTopicSummary::new(
-            0,
-            block_time,
-            topic_name.to_owned(),
-        ));
-        self.tracking_copy.borrow_mut().write(topic_key, summary);
-        Ok(())
-    }
-
     pub(crate) fn create_accounts(
         &self,
         total_supply_key: Key,
         payment_purse_uref: URef,
-    ) -> Result<(), Box<GenesisError>> {
+    ) -> Result<Option<URef>, Box<GenesisError>> {
         let accounts = {
             let mut ret: Vec<GenesisAccount> = self.config.accounts_iter().cloned().collect();
             let system_account = GenesisAccount::system();
@@ -595,6 +563,7 @@ where
         }
 
         let mut total_supply = U512::zero();
+        let mut sustain_purse = None;
 
         for account in accounts {
             let account_hash = account.account_hash();
@@ -606,6 +575,30 @@ where
                 }
                 _ => self.create_purse(account.balance().value())?,
             };
+
+            if self.config.rewards_ratio().is_some() && account.is_sustain_account() {
+                let cl_value = {
+                    let mut ret: BTreeMap<u8, Bytes> = BTreeMap::new();
+                    let ratio_as_bytes = self
+                        .config
+                        .rewards_ratio()
+                        .ok_or(Box::new(GenesisError::CLValue(
+                            "could not serialize rewards ratio".to_string(),
+                        )))?
+                        .to_bytes()
+                        .map_err(|err| Box::new(GenesisError::Bytesrepr(err)))?;
+
+                    ret.insert(REWARDS_HANDLING_RATIO_TAG, ratio_as_bytes.into());
+                    CLValue::from_t(ret)
+                }
+                .map_err(|cl_err| Box::new(GenesisError::CLValue(cl_err.to_string())))?;
+
+                self.tracking_copy
+                    .borrow_mut()
+                    .write(Key::RewardsHandling, StoredValue::CLValue(cl_value));
+
+                sustain_purse = Some(main_purse)
+            }
 
             let key = Key::Account(account_hash);
             let stored_value = StoredValue::Account(Account::create(
@@ -627,7 +620,7 @@ where
             ),
         );
 
-        Ok(())
+        Ok(sustain_purse)
     }
 
     fn initial_seigniorage_recipients(
@@ -785,6 +778,37 @@ where
         Ok(())
     }
 
+    pub(crate) fn handle_sustain_purse(
+        &mut self,
+        sustain_purse: Option<URef>,
+        mint_key: Key,
+    ) -> Result<(), Box<GenesisError>> {
+        if sustain_purse.is_none() {
+            return Ok(());
+        }
+
+        // This is safe because we early exit on the none case
+        let sustain_purse = sustain_purse.unwrap();
+        let named_key_value = StoredValue::CLValue(
+            CLValue::from_t((MINT_SUSTAIN_PURSE_KEY.to_string(), Key::URef(sustain_purse)))
+                .map_err(|cl_error| Box::new(GenesisError::CLValue(cl_error.to_string())))?,
+        );
+
+        match self
+            .tracking_copy
+            .borrow_mut()
+            .add(mint_key, named_key_value)
+        {
+            Err(storage_error) => Err(Box::new(GenesisError::TrackingCopy(storage_error))),
+            Ok(AddResult::Success) => Ok(()),
+            Ok(AddResult::KeyNotFound(_)) => Err(Box::new(GenesisError::InvalidMintKey)),
+            Ok(AddResult::TypeMismatch(_)) | Ok(AddResult::Transform(_)) => Err(Box::new(
+                GenesisError::CLValue("Unable to add sustain purse".to_string()),
+            )),
+            Ok(AddResult::Serialization(error)) => Err(Box::new(GenesisError::Bytesrepr(error))),
+        }
+    }
+
     /// Performs a complete system installation.
     pub(crate) fn install(
         &mut self,
@@ -792,12 +816,14 @@ where
     ) -> Result<(), Box<GenesisError>> {
         // self.setup_system_account()?;
         // Create mint
-        let total_supply_key = self.create_mint()?;
+        let (total_supply_key, mint_key) = self.create_mint()?;
 
         let payment_purse_uref = self.create_purse(U512::zero())?;
 
         // Create all genesis accounts
-        self.create_accounts(total_supply_key, payment_purse_uref)?;
+        let sustain_purse = self.create_accounts(total_supply_key, payment_purse_uref)?;
+
+        self.handle_sustain_purse(sustain_purse, mint_key)?;
 
         // Create the auction and setup the stake of all genesis validators.
         self.create_auction(total_supply_key)?;
@@ -810,9 +836,6 @@ where
 
         // Write block time to global state
         self.store_block_time()?;
-
-        // Create handle payment
-        self.create_messaging_topics(BlockTime::new(self.config.genesis_timestamp_millis()))?;
         Ok(())
     }
 }

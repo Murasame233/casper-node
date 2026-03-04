@@ -16,7 +16,9 @@ use casper_types::{
     RuntimeArgs, TransactionEntryPoint, TransactionHash, Transfer, URefAddr, U512,
 };
 
-use crate::{tracking_copy::TrackingCopyError, RuntimeNativeConfig};
+use crate::{
+    system::runtime_native::Config as NativeRuntimeConfig, tracking_copy::TrackingCopyError,
+};
 
 /// An error returned when constructing an [`AuctionMethod`].
 #[derive(Clone, Eq, PartialEq, Error, Serialize, Debug)]
@@ -53,12 +55,12 @@ pub enum AuctionMethod {
         delegation_rate: DelegationRate,
         /// Bid amount.
         amount: U512,
-        /// Vesting schedule period in milliseconds.
-        vesting_schedule_period_millis: u64,
         /// Minimum delegation amount for this validator bid.
-        minimum_delegation_amount: u64,
+        /// if provided by the user is set to Some
+        minimum_delegation_amount: Option<u64>,
         /// Maximum delegation amount for this validator bid.
-        maximum_delegation_amount: u64,
+        /// if provided by the user is set to Some
+        maximum_delegation_amount: Option<u64>,
         /// The minimum bid amount a validator must submit to have
         /// their bid considered as valid.
         minimum_bid_amount: u64,
@@ -145,13 +147,9 @@ impl AuctionMethod {
                 Err(AuctionMethodError::InvalidEntryPoint(entry_point))
             }
             TransactionEntryPoint::ActivateBid => Self::new_activate_bid(runtime_args),
-            TransactionEntryPoint::AddBid => Self::new_add_bid(
-                runtime_args,
-                chainspec.core_config.vesting_schedule_period.millis(),
-                chainspec.core_config.minimum_delegation_amount,
-                chainspec.core_config.maximum_delegation_amount,
-                chainspec.core_config.minimum_bid_amount,
-            ),
+            TransactionEntryPoint::AddBid => {
+                Self::new_add_bid(runtime_args, chainspec.core_config.minimum_bid_amount)
+            }
             TransactionEntryPoint::WithdrawBid => {
                 Self::new_withdraw_bid(runtime_args, chainspec.core_config.minimum_bid_amount)
             }
@@ -179,20 +177,15 @@ impl AuctionMethod {
 
     fn new_add_bid(
         runtime_args: &RuntimeArgs,
-        vesting_schedule_period_millis: u64,
-        global_minimum_delegation: u64,
-        global_maximum_delegation: u64,
         global_minimum_bid_amount: u64,
     ) -> Result<Self, AuctionMethodError> {
         let public_key = Self::get_named_argument(runtime_args, auction::ARG_PUBLIC_KEY)?;
         let delegation_rate = Self::get_named_argument(runtime_args, auction::ARG_DELEGATION_RATE)?;
         let amount = Self::get_named_argument(runtime_args, auction::ARG_AMOUNT)?;
         let minimum_delegation_amount =
-            Self::get_named_argument(runtime_args, auction::ARG_MINIMUM_DELEGATION_AMOUNT)
-                .unwrap_or(global_minimum_delegation);
+            Self::try_get_named_argument(runtime_args, auction::ARG_MINIMUM_DELEGATION_AMOUNT)?;
         let maximum_delegation_amount =
-            Self::get_named_argument(runtime_args, auction::ARG_MAXIMUM_DELEGATION_AMOUNT)
-                .unwrap_or(global_maximum_delegation);
+            Self::try_get_named_argument(runtime_args, auction::ARG_MAXIMUM_DELEGATION_AMOUNT)?;
         let reserved_slots =
             Self::get_named_argument(runtime_args, auction::ARG_RESERVED_SLOTS).unwrap_or(0);
 
@@ -200,7 +193,6 @@ impl AuctionMethod {
             public_key,
             delegation_rate,
             amount,
-            vesting_schedule_period_millis,
             minimum_delegation_amount,
             maximum_delegation_amount,
             minimum_bid_amount: global_minimum_bid_amount,
@@ -332,15 +324,36 @@ impl AuctionMethod {
             error,
         })
     }
+
+    fn try_get_named_argument<T: FromBytes + CLTyped>(
+        args: &RuntimeArgs,
+        name: &str,
+    ) -> Result<Option<T>, AuctionMethodError> {
+        match args.get(name) {
+            Some(arg) => {
+                let arg = arg
+                    .clone()
+                    .into_t()
+                    .map_err(|error| AuctionMethodError::CLValue {
+                        arg: name.to_string(),
+                        error,
+                    })?;
+                Ok(Some(arg))
+            }
+            None => Ok(None),
+        }
+    }
 }
 
 /// Bidding request.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BiddingRequest {
     /// The runtime config.
-    pub(crate) config: RuntimeNativeConfig,
+    pub(crate) config: NativeRuntimeConfig,
     /// State root hash.
     pub(crate) state_hash: Digest,
+    /// The protocol version.
+    pub(crate) protocol_version: ProtocolVersion,
     /// The auction method.
     pub(crate) auction_method: AuctionMethod,
     /// Transaction hash.
@@ -355,8 +368,9 @@ impl BiddingRequest {
     /// Creates new request instance with runtime args.
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        config: RuntimeNativeConfig,
+        config: NativeRuntimeConfig,
         state_hash: Digest,
+        protocol_version: ProtocolVersion,
         transaction_hash: TransactionHash,
         initiator: InitiatorAddr,
         authorization_keys: BTreeSet<AccountHash>,
@@ -365,6 +379,7 @@ impl BiddingRequest {
         Self {
             config,
             state_hash,
+            protocol_version,
             transaction_hash,
             initiator,
             authorization_keys,
@@ -373,7 +388,7 @@ impl BiddingRequest {
     }
 
     /// Returns the config.
-    pub fn config(&self) -> &RuntimeNativeConfig {
+    pub fn config(&self) -> &NativeRuntimeConfig {
         &self.config
     }
 
@@ -384,7 +399,7 @@ impl BiddingRequest {
 
     /// Returns the protocol version.
     pub fn protocol_version(&self) -> ProtocolVersion {
-        self.config.protocol_version()
+        self.protocol_version
     }
 
     /// Returns the auction method.
@@ -447,5 +462,14 @@ impl BiddingResult {
             BiddingResult::RootNotFound | BiddingResult::Failure(_) => Effects::new(),
             BiddingResult::Success { effects, .. } => effects.clone(),
         }
+    }
+
+    /// Returns the tracking copy error if present.
+    pub fn maybe_error(&self) -> Option<TrackingCopyError> {
+        if let Self::Failure(tce) = self {
+            return Some(tce.clone());
+        }
+
+        None
     }
 }

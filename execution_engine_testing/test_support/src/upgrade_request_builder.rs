@@ -4,7 +4,7 @@ use num_rational::Ratio;
 
 use casper_types::{
     ChainspecRegistry, Digest, EraId, FeeHandling, HoldBalanceHandling, Key, ProtocolUpgradeConfig,
-    ProtocolVersion, StoredValue,
+    ProtocolVersion, RewardsHandling, StoredValue,
 };
 
 /// Builds an `UpgradeConfig`.
@@ -26,7 +26,8 @@ pub struct UpgradeRequestBuilder {
     validator_minimum_bid_amount: u64,
     maximum_delegation_amount: u64,
     minimum_delegation_amount: u64,
-    addressable_entity_enabled: bool,
+    enable_addressable_entity: bool,
+    rewards_handling: RewardsHandling,
 }
 
 impl UpgradeRequestBuilder {
@@ -143,9 +144,15 @@ impl UpgradeRequestBuilder {
         self
     }
 
-    /// Sets whether the addressable entity feature is enabled (on) or disabled (off).
-    pub fn with_addressable_entity_enabled(mut self, addressable_entity_enabled: bool) -> Self {
-        self.addressable_entity_enabled = addressable_entity_enabled;
+    /// Sets the enable entity flag.
+    pub fn with_enable_addressable_entity(mut self, enable_entity: bool) -> Self {
+        self.enable_addressable_entity = enable_entity;
+        self
+    }
+
+    /// Sets the rewards handling
+    pub fn with_rewards_handling(mut self, rewards_handling: RewardsHandling) -> Self {
+        self.rewards_handling = rewards_handling;
         self
     }
 
@@ -169,7 +176,8 @@ impl UpgradeRequestBuilder {
             self.validator_minimum_bid_amount,
             self.maximum_delegation_amount,
             self.minimum_delegation_amount,
-            self.addressable_entity_enabled,
+            self.enable_addressable_entity,
+            self.rewards_handling,
         )
     }
 }
@@ -194,7 +202,8 @@ impl Default for UpgradeRequestBuilder {
             validator_minimum_bid_amount: 2_500_000_000_000u64,
             maximum_delegation_amount: u64::MAX,
             minimum_delegation_amount: 0,
-            addressable_entity_enabled: false,
+            enable_addressable_entity: false,
+            rewards_handling: RewardsHandling::Standard,
         }
     }
 }

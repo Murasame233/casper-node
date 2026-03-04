@@ -41,9 +41,9 @@ use casper_storage::{
         trie::Trie,
         trie_store::lmdb::LmdbTrieStore,
     },
-    system::runtime_native::TransferConfig,
+    system::runtime_native::{Config as NativeRuntimeConfig, TransferConfig},
     tracking_copy::{TrackingCopyEntityExt, TrackingCopyExt},
-    AddressGenerator, RuntimeNativeConfig,
+    AddressGenerator,
 };
 
 use casper_types::{
@@ -66,9 +66,9 @@ use casper_types::{
     AccessRights, Account, AddressableEntity, AddressableEntityHash, AuctionCosts, BlockGlobalAddr,
     BlockTime, ByteCode, ByteCodeAddr, ByteCodeHash, CLTyped, CLValue, Contract, Digest,
     EntityAddr, EntryPoints, EraId, FeeHandling, Gas, HandlePaymentCosts, HoldBalanceHandling,
-    InitiatorAddr, Key, KeyTag, MintCosts, Motes, Package, PackageAddr, Phase,
-    ProtocolUpgradeConfig, ProtocolVersion, PublicKey, RefundHandling, StoredValue,
-    SystemHashRegistry, TransactionHash, TransactionV1Hash, URef, OS_PAGE_SIZE, U512,
+    InitiatorAddr, Key, KeyTag, MintCosts, Motes, Package, PackageHash, Phase,
+    ProtocolUpgradeConfig, ProtocolVersion, PublicKey, RefundHandling, RewardsHandling,
+    StoredValue, SystemHashRegistry, TransactionHash, TransactionV1Hash, URef, OS_PAGE_SIZE, U512,
 };
 
 use crate::{
@@ -85,10 +85,10 @@ pub(crate) const DEFAULT_LMDB_PAGES: usize = 256_000_000;
 /// The default value is chosen to be the same as the node itself.
 pub(crate) const DEFAULT_MAX_READERS: u32 = 512;
 
-/// This is appended to the data dir path provided to the `LmdbWasmTestBuilder`.
+/// This is appended to the data dir path provided to the `LmdbWasmTestBuilder`".
 const GLOBAL_STATE_DIR: &str = "global_state";
 
-/// A wrapper structure that groups an entity alongside it's named keys.
+/// A wrapper structure that groups an entity alongside its namedkeys.
 #[derive(Debug)]
 pub struct EntityWithNamedKeys {
     entity: AddressableEntity,
@@ -307,12 +307,12 @@ impl LmdbWasmTestBuilder {
         );
 
         let max_query_depth = DEFAULT_MAX_QUERY_DEPTH;
-        let addressable_entity_enabled = chainspec.core_config.addressable_entity_enabled;
+        let enable_addressable_entity = chainspec.core_config.enable_addressable_entity;
         let global_state = LmdbGlobalState::empty(
             environment,
             trie_store,
             max_query_depth,
-            addressable_entity_enabled,
+            enable_addressable_entity,
         )
         .expect("should create LmdbGlobalState");
 
@@ -320,7 +320,7 @@ impl LmdbWasmTestBuilder {
             block_store: BlockStore::new(),
             state: global_state,
             max_query_depth,
-            addressable_entity_enabled,
+            enable_addressable_entity,
         });
 
         let engine_config = chainspec.engine_config();
@@ -370,7 +370,7 @@ impl LmdbWasmTestBuilder {
 
         let max_query_depth = DEFAULT_MAX_QUERY_DEPTH;
 
-        let addressable_entity_enabled = chainspec.core_config.addressable_entity_enabled;
+        let enable_addressable_entity = chainspec.core_config.enable_addressable_entity;
         let global_state = match mode {
             GlobalStateMode::Create(database_flags) => {
                 let trie_store = LmdbTrieStore::new(&environment, None, database_flags)
@@ -379,7 +379,7 @@ impl LmdbWasmTestBuilder {
                     Arc::new(environment),
                     Arc::new(trie_store),
                     max_query_depth,
-                    addressable_entity_enabled,
+                    enable_addressable_entity,
                 )
                 .expect("should create LmdbGlobalState")
             }
@@ -391,7 +391,7 @@ impl LmdbWasmTestBuilder {
                     Arc::new(trie_store),
                     post_state_hash,
                     max_query_depth,
-                    addressable_entity_enabled,
+                    enable_addressable_entity,
                 )
             }
         };
@@ -400,7 +400,7 @@ impl LmdbWasmTestBuilder {
             block_store: BlockStore::new(),
             state: global_state,
             max_query_depth,
-            addressable_entity_enabled,
+            enable_addressable_entity,
         });
         let mut engine_config = chainspec.engine_config();
         engine_config.set_protocol_version(protocol_version);
@@ -568,10 +568,7 @@ impl LmdbWasmTestBuilder {
     /// Runs a [`TransferRequest`] and commits the resulting effects.
     pub fn transfer_and_commit(&mut self, mut transfer_request: TransferRequest) -> &mut Self {
         let pre_state_hash = self.post_state_hash.expect("expected post_state_hash");
-        transfer_request.set_state_hash_and_config(
-            pre_state_hash,
-            self.runtime_native_config(transfer_request.protocol_version()),
-        );
+        transfer_request.set_state_hash_and_config(pre_state_hash, self.native_runtime_config());
         let transfer_result = self.data_access_layer.transfer(transfer_request);
         let gas = Gas::new(self.chainspec.system_costs_config.mint_costs().transfer);
         let execution_result = WasmV1Result::from_transfer_result(transfer_result, gas)
@@ -738,7 +735,7 @@ where
     }
 
     /// Queries for the total supply of token.
-    ///
+    /// # Panics
     /// Panics if the total supply can't be found.
     pub fn total_supply(
         &self,
@@ -759,6 +756,7 @@ where
     }
 
     /// Queries for the round seigniorage rate.
+    /// # Panics
     /// Panics if the total supply or seigniorage rate can't be found.
     pub fn round_seigniorage_rate(
         &mut self,
@@ -785,6 +783,7 @@ where
     }
 
     /// Queries for the base round reward.
+    /// # Panics
     /// Panics if the total supply or seigniorage rate can't be found.
     pub fn base_round_reward(
         &mut self,
@@ -825,16 +824,15 @@ where
         let max_delegators_per_validator = config.core_config.max_delegators_per_validator;
         let minimum_bid_amount = config.core_config.minimum_bid_amount;
         let minimum_delegation_amount = config.core_config.minimum_delegation_amount;
-        let maximum_delegation_amount = self.chainspec.core_config.maximum_delegation_amount;
+        let maximum_delegation_amount = config.core_config.maximum_delegation_amount;
         let balance_hold_interval = config.core_config.gas_hold_interval.millis();
         let include_credits = config.core_config.fee_handling == FeeHandling::NoFee;
         let credit_cap = Ratio::new_raw(
             U512::from(*config.core_config.validator_credit_cap.numer()),
             U512::from(*config.core_config.validator_credit_cap.denom()),
         );
-        let addressable_entity_enabled = config.core_config.addressable_entity_enabled;
-        let runtime_native_config = RuntimeNativeConfig::new(
-            protocol_version,
+        let enable_addressable_entity = config.core_config.enable_addressable_entity;
+        let native_runtime_config = casper_storage::system::runtime_native::Config::new(
             TransferConfig::Unadministered,
             fee_handling,
             refund_handling,
@@ -848,13 +846,15 @@ where
             balance_hold_interval,
             include_credits,
             credit_cap,
-            addressable_entity_enabled,
+            enable_addressable_entity,
             config.system_costs_config.mint_costs().transfer,
+            config.core_config.rewards_handling.clone(),
         );
 
         let bidding_req = BiddingRequest::new(
-            runtime_native_config,
+            native_runtime_config,
             post_state,
+            protocol_version,
             transaction_hash,
             initiator,
             authorization_keys,
@@ -955,9 +955,6 @@ where
     }
 
     /// Executes a request to call the system auction contract.
-    /// This ONLY executes the run_auction logic of the auction. If you are testing
-    /// specifically that function, this is sufficient. However, to match the standard
-    /// end of era auction behavior the comprehensive `step` function should be used instead.
     pub fn run_auction(
         &mut self,
         era_end_timestamp_millis: u64,
@@ -977,7 +974,7 @@ where
         self.exec(exec_request).expect_success().commit()
     }
 
-    /// Increments engine state at end of era (rewards, auction, unbond, etc.).
+    /// Increments engine state.
     pub fn step(&mut self, step_request: StepRequest) -> StepResult {
         let step_result = self.data_access_layer.step(step_request);
 
@@ -991,7 +988,7 @@ where
         step_result
     }
 
-    fn runtime_native_config(&self, protocol_version: ProtocolVersion) -> RuntimeNativeConfig {
+    fn native_runtime_config(&self) -> NativeRuntimeConfig {
         let administrators: BTreeSet<AccountHash> = self
             .chainspec
             .core_config
@@ -1006,9 +1003,7 @@ where
             U512::from(*self.chainspec.core_config.validator_credit_cap.numer()),
             U512::from(*self.chainspec.core_config.validator_credit_cap.denom()),
         );
-
-        RuntimeNativeConfig::new(
-            protocol_version,
+        NativeRuntimeConfig::new(
             transfer_config,
             self.chainspec.core_config.fee_handling,
             self.chainspec.core_config.refund_handling,
@@ -1022,8 +1017,9 @@ where
             self.chainspec.core_config.gas_hold_interval.millis(),
             include_credits,
             credit_cap,
-            self.chainspec.core_config.addressable_entity_enabled,
+            self.chainspec.core_config.enable_addressable_entity,
             self.chainspec.system_costs_config.mint_costs().transfer,
+            self.chainspec.core_config.rewards_handling.clone(),
         )
     }
 
@@ -1034,10 +1030,15 @@ where
         protocol_version: ProtocolVersion,
         block_time: u64,
     ) -> FeeResult {
-        let runtime_native_config = self.runtime_native_config(protocol_version);
+        let native_runtime_config = self.native_runtime_config();
 
         let pre_state_hash = pre_state_hash.or(self.post_state_hash).unwrap();
-        let fee_req = FeeRequest::new(runtime_native_config, pre_state_hash, block_time.into());
+        let fee_req = FeeRequest::new(
+            native_runtime_config,
+            pre_state_hash,
+            protocol_version,
+            block_time.into(),
+        );
         let fee_result = self.data_access_layer.distribute_fees(fee_req);
 
         if let FeeResult::Success {
@@ -1059,10 +1060,76 @@ where
         block_time: u64,
     ) -> BlockRewardsResult {
         let pre_state_hash = pre_state_hash.or(self.post_state_hash).unwrap();
-        let runtime_native_config = self.runtime_native_config(protocol_version);
+        let native_runtime_config = self.native_runtime_config();
         let distribute_req = BlockRewardsRequest::new(
-            runtime_native_config,
+            native_runtime_config,
             pre_state_hash,
+            protocol_version,
+            BlockTime::new(block_time),
+            rewards,
+        );
+        let distribute_block_rewards_result = self
+            .data_access_layer
+            .distribute_block_rewards(distribute_req);
+
+        if let BlockRewardsResult::Success {
+            post_state_hash, ..
+        } = distribute_block_rewards_result
+        {
+            self.post_state_hash = Some(post_state_hash);
+        }
+
+        distribute_block_rewards_result
+    }
+
+    /// Distributes the rewards.
+    pub fn distribute_with_rewards_handling(
+        &mut self,
+        pre_state_hash: Option<Digest>,
+        protocol_version: ProtocolVersion,
+        rewards: BTreeMap<PublicKey, Vec<U512>>,
+        block_time: u64,
+        rewards_handling: RewardsHandling,
+    ) -> BlockRewardsResult {
+        let pre_state_hash = pre_state_hash.or(self.post_state_hash).unwrap();
+        let administrators: BTreeSet<AccountHash> = self
+            .chainspec
+            .core_config
+            .administrators
+            .iter()
+            .map(|x| x.to_account_hash())
+            .collect();
+        let allow_unrestricted = self.chainspec.core_config.allow_unrestricted_transfers;
+        let transfer_config = TransferConfig::new(administrators, allow_unrestricted);
+        let include_credits = self.chainspec.core_config.fee_handling == FeeHandling::NoFee;
+        let credit_cap = Ratio::new_raw(
+            U512::from(*self.chainspec.core_config.validator_credit_cap.numer()),
+            U512::from(*self.chainspec.core_config.validator_credit_cap.denom()),
+        );
+
+        let native_runtime_config = NativeRuntimeConfig::new(
+            transfer_config,
+            self.chainspec.core_config.fee_handling,
+            self.chainspec.core_config.refund_handling,
+            self.chainspec.core_config.vesting_schedule_period.millis(),
+            self.chainspec.core_config.allow_auction_bids,
+            self.chainspec.core_config.compute_rewards,
+            self.chainspec.core_config.max_delegators_per_validator,
+            self.chainspec.core_config.minimum_bid_amount,
+            self.chainspec.core_config.minimum_delegation_amount,
+            self.chainspec.core_config.maximum_delegation_amount,
+            self.chainspec.core_config.gas_hold_interval.millis(),
+            include_credits,
+            credit_cap,
+            self.chainspec.core_config.enable_addressable_entity,
+            self.chainspec.system_costs_config.mint_costs().transfer,
+            rewards_handling,
+        );
+
+        let distribute_req = BlockRewardsRequest::new(
+            native_runtime_config,
+            pre_state_hash,
+            protocol_version,
             BlockTime::new(block_time),
             rewards,
         );
@@ -1089,10 +1156,11 @@ where
         handle_fee_mode: HandleFeeMode,
     ) -> HandleFeeResult {
         let pre_state_hash = pre_state_hash.or(self.post_state_hash).unwrap();
-        let runtime_native_config = self.runtime_native_config(protocol_version);
+        let native_runtime_config = self.native_runtime_config();
         let handle_fee_request = HandleFeeRequest::new(
-            runtime_native_config,
+            native_runtime_config,
             pre_state_hash,
+            protocol_version,
             transaction_hash,
             handle_fee_mode,
         );
@@ -1421,7 +1489,7 @@ where
             .get_system_entity_hash(HANDLE_PAYMENT)
             .expect("should have handle payment contract");
 
-        let handle_payment_contract = if self.chainspec.core_config.addressable_entity_enabled {
+        let handle_payment_contract = if self.chainspec.core_config.enable_addressable_entity {
             Key::addressable_entity_key(EntityKindTag::System, hash)
         } else {
             Key::Hash(hash.value())
@@ -1513,7 +1581,7 @@ where
         }
     }
 
-    /// Returns an Entity alongside it's named keys queried by its account hash.
+    /// Returns an Entity alongside its named keys queried by its account hash.
     pub fn get_entity_with_named_keys_by_account_hash(
         &self,
         account_hash: AccountHash,
@@ -1526,7 +1594,7 @@ where
         None
     }
 
-    /// Returns an Entity alongside it's named keys queried by its entity hash.
+    /// Returns an Entity alongside its named keys queried by its entity hash.
     pub fn get_entity_with_named_keys_by_entity_hash(
         &self,
         entity_hash: AddressableEntityHash,
@@ -1573,7 +1641,7 @@ where
         &self,
         entity_hash: AddressableEntityHash,
     ) -> Option<AddressableEntity> {
-        if !self.chainspec.core_config.addressable_entity_enabled {
+        if !self.chainspec.core_config.enable_addressable_entity {
             let contract_hash = ContractHash::new(entity_hash.value());
             return self
                 .get_contract(contract_hash)
@@ -1628,12 +1696,12 @@ where
         }
     }
 
-    /// Queries for a contract package by `PackageAddr`.
-    pub fn get_package(&self, package_addr: PackageAddr) -> Option<Package> {
-        let key = if self.chainspec.core_config.addressable_entity_enabled {
-            Key::Package(package_addr)
+    /// Queries for a contract package by `PackageHash`.
+    pub fn get_package(&self, package_hash: PackageHash) -> Option<Package> {
+        let key = if self.chainspec.core_config.enable_addressable_entity {
+            Key::SmartContract(package_hash.value())
         } else {
-            Key::Hash(package_addr.value())
+            Key::Hash(package_hash.value())
         };
         let contract_value: StoredValue = self
             .query(None, key, &[])
@@ -1665,7 +1733,7 @@ where
     /// Assert that last error is the expected one.
     ///
     /// NOTE: we're using string-based representation for checking equality
-    /// as the `Error` type does not implement `Eq` (many of the sub-variants do not).
+    /// as the `Error` type does not implement `Eq` (many of its subvariants don't).
     pub fn assert_error(&self, expected_error: Error) {
         match self.get_error() {
             Some(error) => assert_eq!(format!("{:?}", expected_error), format!("{:?}", error)),
@@ -1872,7 +1940,8 @@ where
 
         let tracking_copy = self
             .data_access_layer
-            .tracking_copy(state_root_hash)?
+            .tracking_copy(state_root_hash)
+            .unwrap()
             .unwrap();
 
         let reader = tracking_copy.reader();
@@ -1955,7 +2024,7 @@ where
             state_root_hash,
             ProtocolVersion::V2_0_0,
             SystemEntityRegistrySelector::auction(),
-            self.chainspec.core_config.addressable_entity_enabled,
+            self.chainspec.core_config.enable_addressable_entity,
         );
         self.system_entity_key(request)
             .into_entity_hash()
@@ -1969,7 +2038,7 @@ where
             state_root_hash,
             ProtocolVersion::V2_0_0,
             SystemEntityRegistrySelector::mint(),
-            self.chainspec.core_config.addressable_entity_enabled,
+            self.chainspec.core_config.enable_addressable_entity,
         );
         self.system_entity_key(request)
             .into_entity_hash()
@@ -1987,7 +2056,7 @@ where
             state_root_hash,
             protocol_version,
             SystemEntityRegistrySelector::handle_payment(),
-            self.chainspec.core_config.addressable_entity_enabled,
+            self.chainspec.core_config.enable_addressable_entity,
         );
         self.system_entity_key(request)
             .into_entity_hash()
@@ -2005,7 +2074,8 @@ where
     /// Advances eras by num_eras
     pub fn advance_eras_by(&mut self, num_eras: u64) {
         let step_request_builder = StepRequestBuilder::new()
-            .with_runtime_config(self.runtime_native_config(ProtocolVersion::V2_0_0))
+            .with_protocol_version(ProtocolVersion::V2_0_0)
+            .with_runtime_config(self.native_runtime_config())
             .with_run_auction(true);
 
         for _ in 0..num_eras {
@@ -2041,7 +2111,8 @@ where
     pub fn step_request_builder(&mut self) -> StepRequestBuilder {
         StepRequestBuilder::new()
             .with_parent_state_hash(self.get_post_state_hash())
-            .with_runtime_config(self.runtime_native_config(ProtocolVersion::V2_0_0))
+            .with_protocol_version(ProtocolVersion::V2_0_0)
+            .with_runtime_config(self.native_runtime_config())
     }
 
     /// Returns a trie by hash.

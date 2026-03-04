@@ -37,7 +37,6 @@ use crate::{
     account::{AccountHash, ACCOUNT_HASH_LENGTH},
     addressable_entity::{
         self, AddressableEntityHash, EntityAddr, EntityKindTag, EntryPointAddr, NamedKeyAddr,
-        StateFieldAddr,
     },
     block::BlockGlobalAddr,
     byte_code,
@@ -49,12 +48,11 @@ use crate::{
     contract_messages::{self, MessageAddr, TopicNameHash, TOPIC_NAME_HASH_LENGTH},
     contract_wasm::ContractWasmHash,
     contracts::{ContractHash, ContractPackageHash},
-    package::{PackageAddr, TryFromSliceForPackageAddrError},
+    package::PackageHash,
     system::{
         auction::{BidAddr, BidAddrTag},
         mint::BalanceHoldAddr,
     },
-    type_definitions::TypeUid,
     uref::{self, URef, URefAddr, UREF_SERIALIZED_LENGTH},
     ByteCodeAddr, DeployHash, Digest, EraId, Tagged, TransferAddr, TransferFromStrError,
     TRANSFER_ADDR_LENGTH, UREF_ADDR_LENGTH,
@@ -81,7 +79,7 @@ const BLOCK_GLOBAL_MESSAGE_COUNT_PREFIX: &str = "block-message-count-";
 const BLOCK_GLOBAL_PROTOCOL_VERSION_PREFIX: &str = "block-protocol-version-";
 const BLOCK_GLOBAL_ADDRESSABLE_ENTITY_PREFIX: &str = "block-addressable-entity-";
 const STATE_PREFIX: &str = "state-";
-const TYPE_DEF_PREFIX: &str = "typedef-";
+const REWARDS_HANDLING_PREFIX: &str = "rewards-handling-";
 
 /// The number of bytes in a Blake2b hash
 pub const BLAKE2B_DIGEST_LENGTH: usize = 32;
@@ -95,6 +93,8 @@ pub const KEY_DEPLOY_INFO_LENGTH: usize = DeployHash::LENGTH;
 pub const KEY_DICTIONARY_LENGTH: usize = 32;
 /// The maximum length for a `dictionary_item_key`.
 pub const DICTIONARY_ITEM_KEY_MAX_LENGTH: usize = 128;
+/// The maximum length for an `Addr`.
+pub const ADDR_LENGTH: usize = 32;
 const PADDING_BYTES: [u8; 32] = [0u8; 32];
 const BLOCK_GLOBAL_PADDING_BYTES: [u8; 31] = [0u8; 31];
 const KEY_ID_SERIALIZED_LENGTH: usize = 1;
@@ -116,6 +116,8 @@ const KEY_CHAINSPEC_REGISTRY_SERIALIZED_LENGTH: usize =
     KEY_ID_SERIALIZED_LENGTH + PADDING_BYTES.len();
 const KEY_CHECKSUM_REGISTRY_SERIALIZED_LENGTH: usize =
     KEY_ID_SERIALIZED_LENGTH + PADDING_BYTES.len();
+const KEY_REWARDS_HANDLING_SERIALIZED_LENGTH: usize =
+    KEY_ID_SERIALIZED_LENGTH + PADDING_BYTES.len();
 const KEY_PACKAGE_SERIALIZED_LENGTH: usize = KEY_ID_SERIALIZED_LENGTH + 32;
 const KEY_MESSAGE_SERIALIZED_LENGTH: usize = KEY_ID_SERIALIZED_LENGTH
     + U8_SERIALIZED_LENGTH
@@ -123,12 +125,14 @@ const KEY_MESSAGE_SERIALIZED_LENGTH: usize = KEY_ID_SERIALIZED_LENGTH
     + TOPIC_NAME_HASH_LENGTH
     + U8_SERIALIZED_LENGTH
     + U32_SERIALIZED_LENGTH;
-const KEY_TYPE_DEF_SERIALIZED_LENGTH: usize = KEY_ID_SERIALIZED_LENGTH + U32_SERIALIZED_LENGTH;
 
 const MAX_SERIALIZED_LENGTH: usize = KEY_MESSAGE_SERIALIZED_LENGTH;
 
 /// An alias for [`Key`]s hash variant.
 pub type HashAddr = [u8; KEY_HASH_LENGTH];
+
+/// An alias for [`Key`]s package variant.
+pub type PackageAddr = [u8; ADDR_LENGTH];
 
 /// An alias for [`Key`]s dictionary variant.
 pub type DictionaryAddr = [u8; KEY_DICTIONARY_LENGTH];
@@ -162,14 +166,14 @@ pub enum KeyTag {
     BalanceHold = 22,
     EntryPoint = 23,
     State = 24,
-    TypeDefinitions = 25,
+    RewardsHandling = 25,
 }
 
 impl KeyTag {
     /// Returns a random `KeyTag`.
     #[cfg(any(feature = "testing", test))]
     pub fn random(rng: &mut TestRng) -> Self {
-        match rng.gen_range(0..=25) {
+        match rng.gen_range(0..=23) {
             0 => KeyTag::Account,
             1 => KeyTag::Hash,
             2 => KeyTag::URef,
@@ -195,7 +199,6 @@ impl KeyTag {
             22 => KeyTag::BalanceHold,
             23 => KeyTag::EntryPoint,
             24 => KeyTag::State,
-            25 => KeyTag::TypeDefinitions,
             _ => panic!(),
         }
     }
@@ -229,7 +232,7 @@ impl Display for KeyTag {
             KeyTag::BalanceHold => write!(f, "BalanceHold"),
             KeyTag::State => write!(f, "State"),
             KeyTag::EntryPoint => write!(f, "EntryPoint"),
-            KeyTag::TypeDefinitions => write!(f, "TypeDefinitions"),
+            KeyTag::RewardsHandling => write!(f, "RewardsHandling"),
         }
     }
 }
@@ -280,7 +283,7 @@ impl FromBytes for KeyTag {
             tag if tag == KeyTag::BalanceHold as u8 => KeyTag::BalanceHold,
             tag if tag == KeyTag::EntryPoint as u8 => KeyTag::EntryPoint,
             tag if tag == KeyTag::State as u8 => KeyTag::State,
-            tag if tag == KeyTag::TypeDefinitions as u8 => KeyTag::TypeDefinitions,
+            tag if tag == KeyTag::RewardsHandling as u8 => KeyTag::RewardsHandling,
             _ => return Err(Error::Formatting),
         };
         Ok((tag, rem))
@@ -328,7 +331,7 @@ pub enum Key {
     /// A `Key` under which bid information is stored.
     BidAddr(BidAddr),
     /// A `Key` under which package information is stored.
-    Package(PackageAddr),
+    SmartContract(PackageAddr),
     /// A `Key` under which an addressable entity is stored.
     AddressableEntity(EntityAddr),
     /// A `Key` under which a byte code record is stored.
@@ -343,10 +346,10 @@ pub enum Key {
     BalanceHold(BalanceHoldAddr),
     /// A `Key` under which a entrypoint record is written.
     EntryPoint(EntryPointAddr),
-    /// A `Key` under which a contract's state field lives.
-    State(StateFieldAddr),
-    /// A `Key` under which a set of type definitions is stored.
-    TypeDef(TypeUid),
+    /// A `Key` under which a contract's state lives.
+    State(EntityAddr),
+    /// A `Key` under which we store rewards handling information
+    RewardsHandling,
 }
 
 #[cfg(feature = "json-schema")]
@@ -421,8 +424,7 @@ pub enum FromStrError {
     EntryPoint(String),
     /// State key parse error.
     State(String),
-    /// Type definition key parse error.
-    TypeDefinitions(String),
+    RewardsHandling(String),
     /// Unknown prefix.
     UnknownPrefix,
 }
@@ -506,11 +508,12 @@ impl Display for FromStrError {
             FromStrError::EntryPoint(error) => {
                 write!(f, "entry-point from string error: {}", error)
             }
-            FromStrError::TypeDefinitions(error) => {
-                write!(f, "type-def-key from string error: {}", error)
-            }
             FromStrError::UnknownPrefix => write!(f, "unknown prefix for key"),
             FromStrError::State(error) => write!(f, "state-key from string error: {}", error),
+
+            FromStrError::RewardsHandling(error) => {
+                write!(f, "rewards-handling-key from string error: {}", error)
+            }
         }
     }
 }
@@ -536,7 +539,7 @@ impl Key {
             Key::ChainspecRegistry => String::from("Key::ChainspecRegistry"),
             Key::ChecksumRegistry => String::from("Key::ChecksumRegistry"),
             Key::BidAddr(_) => String::from("Key::BidAddr"),
-            Key::Package(_) => String::from("Key::Package"),
+            Key::SmartContract(_) => String::from("Key::SmartContract"),
             Key::AddressableEntity(_) => String::from("Key::AddressableEntity"),
             Key::ByteCode(_) => String::from("Key::ByteCode"),
             Key::Message(_) => String::from("Key::Message"),
@@ -545,7 +548,7 @@ impl Key {
             Key::BalanceHold(_) => String::from("Key::BalanceHold"),
             Key::EntryPoint(_) => String::from("Key::EntryPoint"),
             Key::State(_) => String::from("Key::State"),
-            Key::TypeDef(_) => String::from("Key::TypeDef"),
+            Key::RewardsHandling => String::from("Key::RewardsHandling"),
         }
     }
 
@@ -639,7 +642,7 @@ impl Key {
                 format!("{}{}", BID_ADDR_PREFIX, bid_addr)
             }
             Key::Message(message_addr) => message_addr.to_formatted_string(),
-            Key::Package(package_addr) => {
+            Key::SmartContract(package_addr) => {
                 format!("{}{}", PACKAGE_PREFIX, base16::encode_lower(&package_addr))
             }
             Key::AddressableEntity(entity_addr) => {
@@ -668,14 +671,18 @@ impl Key {
                 let tail = BalanceHoldAddr::to_formatted_string(&balance_hold_addr);
                 format!("{}{}", BALANCE_HOLD_PREFIX, tail)
             }
-            Key::State(state_field_addr) => {
-                format!("{}{}", STATE_PREFIX, state_field_addr)
+            Key::State(entity_addr) => {
+                format!("{}{}", STATE_PREFIX, entity_addr)
             }
             Key::EntryPoint(entry_point_addr) => {
                 format!("{}", entry_point_addr)
             }
-            Key::TypeDef(type_uid) => {
-                format!("{}{:08x}", TYPE_DEF_PREFIX, type_uid.value())
+            Key::RewardsHandling => {
+                format!(
+                    "{}{}",
+                    REWARDS_HANDLING_PREFIX,
+                    base16::encode_lower(&PADDING_BYTES)
+                )
             }
         }
     }
@@ -694,13 +701,6 @@ impl Key {
             let hash_addr = HashAddr::try_from(addr.as_ref())
                 .map_err(|error| FromStrError::Hash(error.to_string()))?;
             return Ok(Key::Hash(hash_addr));
-        }
-
-        if let Some(raw) = input.strip_prefix(TYPE_DEF_PREFIX) {
-            let type_uid = u32::from_str_radix(raw, 16)
-                .map(TypeUid::new)
-                .map_err(|error| FromStrError::TypeDefinitions(error.to_string()))?;
-            return Ok(Key::TypeDef(type_uid));
         }
 
         if let Some(hex) = input.strip_prefix(DEPLOY_INFO_PREFIX) {
@@ -912,11 +912,9 @@ impl Key {
         if let Some(package_addr) = input.strip_prefix(PACKAGE_PREFIX) {
             let package_addr_bytes = checksummed_hex::decode(package_addr)
                 .map_err(|error| FromStrError::Dictionary(error.to_string()))?;
-            let value: &Vec<u8> = package_addr_bytes.as_ref();
-            let addr = PackageAddr::try_from(value).map_err(
-                |error: TryFromSliceForPackageAddrError| FromStrError::Package(error.to_string()),
-            )?;
-            return Ok(Key::Package(addr));
+            let addr = PackageAddr::try_from(package_addr_bytes.as_ref())
+                .map_err(|error| FromStrError::Package(error.to_string()))?;
+            return Ok(Key::SmartContract(addr));
         }
 
         match EntityAddr::from_formatted_str(input) {
@@ -994,32 +992,23 @@ impl Key {
             Err(error) => return Err(FromStrError::EntryPoint(error.to_string())),
         }
 
-        if let Some(entity_and_tail) = input.strip_prefix(STATE_PREFIX) {
-            let Some(last_dash) = entity_and_tail.rfind('-') else {
-                return Err(FromStrError::State("Missing state tail".to_string()));
-            };
-            let (entity_str, tail_hex) = entity_and_tail.split_at(last_dash);
-            let tail_hex = &tail_hex[1..];
-            match EntityAddr::from_formatted_str(entity_str) {
-                Ok(entity_addr) => {
-                    let tail_bytes = checksummed_hex::decode(tail_hex)
-                        .map_err(|e| FromStrError::State(e.to_string()))?;
-                    let tail: [u8; 32] = match <[u8; 32]>::try_from(tail_bytes.as_ref()) {
-                        Ok(arr) => arr,
-                        Err(_) => {
-                            return Err(FromStrError::State(
-                                "Invalid state tail length".to_string(),
-                            ))
-                        }
-                    };
-                    return Ok(Key::State(StateFieldAddr::new_state_field_addr(
-                        entity_addr,
-                        tail,
-                    )));
-                }
+        if let Some(entity_addr_formatted) = input.strip_prefix(STATE_PREFIX) {
+            match EntityAddr::from_formatted_str(entity_addr_formatted) {
+                Ok(entity_addr) => return Ok(Key::State(entity_addr)),
                 Err(addressable_entity::FromStrError::InvalidPrefix) => {}
-                Err(error) => return Err(FromStrError::State(error.to_string())),
+                Err(error) => {
+                    return Err(FromStrError::State(error.to_string()));
+                }
             }
+        }
+
+        if let Some(rewards_handling_padding) = input.strip_prefix(REWARDS_HANDLING_PREFIX) {
+            let padded_bytes = checksummed_hex::decode(rewards_handling_padding)
+                .map_err(|error| FromStrError::RewardsHandling(error.to_string()))?;
+            let _padding: [u8; 32] = TryFrom::try_from(padded_bytes.as_ref()).map_err(|_| {
+                FromStrError::RewardsHandling("Failed to deserialize era summary key".to_string())
+            })?;
+            return Ok(Key::RewardsHandling);
         }
 
         Err(FromStrError::UnknownPrefix)
@@ -1058,8 +1047,8 @@ impl Key {
     /// returns `None`.
     pub fn into_package_addr(self) -> Option<PackageAddr> {
         match self {
-            Key::Hash(hash) => Some(hash.into()),
-            Key::Package(package_addr) => Some(package_addr),
+            Key::Hash(hash) => Some(hash),
+            Key::SmartContract(package_addr) => Some(package_addr),
             _ => None,
         }
     }
@@ -1071,11 +1060,11 @@ impl Key {
         Some(AddressableEntityHash::new(entity_addr))
     }
 
-    /// Returns [`PackageAddr`] of `self` if `self` is of type [`Key::SmartContract`], otherwise
+    /// Returns [`PackageHash`] of `self` if `self` is of type [`Key::SmartContract`], otherwise
     /// returns `None`.
-    pub fn into_package_hash(self) -> Option<PackageAddr> {
+    pub fn into_package_hash(self) -> Option<PackageHash> {
         let package_addr = self.into_package_addr()?;
-        Some(package_addr)
+        Some(PackageHash::new(package_addr))
     }
 
     /// Returns [`NamedKeyAddr`] of `self` if `self` is of type [`Key::NamedKey`], otherwise
@@ -1200,7 +1189,6 @@ impl Key {
             EntityKindTag::System => EntityAddr::new_system(entity_hash.value()),
             EntityKindTag::Account => EntityAddr::new_account(entity_hash.value()),
             EntityKindTag::SmartContract => EntityAddr::new_smart_contract(entity_hash.value()),
-            EntityKindTag::Package => EntityAddr::new_package(entity_hash.value()),
         };
 
         Key::AddressableEntity(entity_addr)
@@ -1273,7 +1261,10 @@ impl Key {
     /// Returns if the inner address is for a system contract entity.
     pub fn is_system_key(&self) -> bool {
         if let Self::AddressableEntity(entity_addr) = self {
-            return matches!(entity_addr.tag(), EntityKindTag::System);
+            return match entity_addr.tag() {
+                EntityKindTag::System => true,
+                EntityKindTag::SmartContract | EntityKindTag::Account => false,
+            };
         }
         false
     }
@@ -1316,7 +1307,7 @@ impl Key {
                 // uref's require explicit permissions
                 uref.is_readable()
             }
-            Key::SystemEntityRegistry | Key::Package(_) => {
+            Key::SystemEntityRegistry | Key::SmartContract(_) => {
                 // the system entities and all packages are public info
                 true
             }
@@ -1459,7 +1450,7 @@ impl Display for Key {
             Key::Message(message_addr) => {
                 write!(f, "Key::Message({})", message_addr)
             }
-            Key::Package(package_addr) => {
+            Key::SmartContract(package_addr) => {
                 write!(f, "Key::Package({})", base16::encode_lower(package_addr))
             }
             Key::AddressableEntity(entity_addr) => write!(
@@ -1488,10 +1479,14 @@ impl Display for Key {
             Key::EntryPoint(entry_point_addr) => {
                 write!(f, "Key::EntryPointAddr({})", entry_point_addr)
             }
-            Key::State(addr) => write!(f, "Key::State({})", addr),
-            Key::TypeDef(type_uid) => {
-                write!(f, "Key::TypeDef({})", type_uid)
+            Key::State(entity_addr) => {
+                write!(f, "Key::State({})", entity_addr)
             }
+            Key::RewardsHandling => write!(
+                f,
+                "Key::RewardsHandling({})",
+                base16::encode_lower(&PADDING_BYTES),
+            ),
         }
     }
 }
@@ -1521,7 +1516,7 @@ impl Tagged<KeyTag> for Key {
             Key::ChainspecRegistry => KeyTag::ChainspecRegistry,
             Key::ChecksumRegistry => KeyTag::ChecksumRegistry,
             Key::BidAddr(_) => KeyTag::BidAddr,
-            Key::Package(_) => KeyTag::Package,
+            Key::SmartContract(_) => KeyTag::Package,
             Key::AddressableEntity(..) => KeyTag::AddressableEntity,
             Key::ByteCode(..) => KeyTag::ByteCode,
             Key::Message(_) => KeyTag::Message,
@@ -1530,7 +1525,7 @@ impl Tagged<KeyTag> for Key {
             Key::BalanceHold(_) => KeyTag::BalanceHold,
             Key::EntryPoint(_) => KeyTag::EntryPoint,
             Key::State(_) => KeyTag::State,
-            Key::TypeDef(_) => KeyTag::TypeDefinitions,
+            Key::RewardsHandling => KeyTag::RewardsHandling,
         }
     }
 }
@@ -1554,9 +1549,9 @@ impl From<AccountHash> for Key {
     }
 }
 
-impl From<PackageAddr> for Key {
-    fn from(package_hash: PackageAddr) -> Key {
-        Key::Package(package_hash)
+impl From<PackageHash> for Key {
+    fn from(package_hash: PackageHash) -> Key {
+        Key::SmartContract(package_hash.value())
     }
 }
 
@@ -1623,7 +1618,7 @@ impl ToBytes for Key {
             Key::ChainspecRegistry => KEY_CHAINSPEC_REGISTRY_SERIALIZED_LENGTH,
             Key::ChecksumRegistry => KEY_CHECKSUM_REGISTRY_SERIALIZED_LENGTH,
             Key::BidAddr(bid_addr) => KEY_ID_SERIALIZED_LENGTH + bid_addr.serialized_length(),
-            Key::Package(_) => KEY_PACKAGE_SERIALIZED_LENGTH,
+            Key::SmartContract(_) => KEY_PACKAGE_SERIALIZED_LENGTH,
             Key::AddressableEntity(entity_addr) => {
                 KEY_ID_SERIALIZED_LENGTH + entity_addr.serialized_length()
             }
@@ -1647,8 +1642,8 @@ impl ToBytes for Key {
             Key::EntryPoint(entry_point_addr) => {
                 U8_SERIALIZED_LENGTH + entry_point_addr.serialized_length()
             }
-            Key::State(addr) => KEY_ID_SERIALIZED_LENGTH + addr.serialized_length(),
-            Key::TypeDef(_) => KEY_TYPE_DEF_SERIALIZED_LENGTH,
+            Key::State(entity_addr) => KEY_ID_SERIALIZED_LENGTH + entity_addr.serialized_length(),
+            Key::RewardsHandling => KEY_REWARDS_HANDLING_SERIALIZED_LENGTH,
         }
     }
 
@@ -1669,21 +1664,21 @@ impl ToBytes for Key {
             Key::SystemEntityRegistry
             | Key::EraSummary
             | Key::ChainspecRegistry
-            | Key::ChecksumRegistry => PADDING_BYTES.write_bytes(writer),
+            | Key::ChecksumRegistry
+            | Key::RewardsHandling => PADDING_BYTES.write_bytes(writer),
             Key::BlockGlobal(addr) => {
                 addr.write_bytes(writer)?;
                 BLOCK_GLOBAL_PADDING_BYTES.write_bytes(writer)
             }
             Key::BidAddr(bid_addr) => bid_addr.write_bytes(writer),
-            Key::Package(package_addr) => package_addr.write_bytes(writer),
+            Key::SmartContract(package_addr) => package_addr.write_bytes(writer),
             Key::AddressableEntity(entity_addr) => entity_addr.write_bytes(writer),
             Key::ByteCode(byte_code_addr) => byte_code_addr.write_bytes(writer),
             Key::Message(message_addr) => message_addr.write_bytes(writer),
             Key::NamedKey(named_key_addr) => named_key_addr.write_bytes(writer),
             Key::BalanceHold(balance_hold_addr) => balance_hold_addr.write_bytes(writer),
             Key::EntryPoint(entry_point_addr) => entry_point_addr.write_bytes(writer),
-            Key::State(addr) => addr.write_bytes(writer),
-            Key::TypeDef(type_uid) => type_uid.write_bytes(writer),
+            Key::State(entity_addr) => entity_addr.write_bytes(writer),
         }
     }
 }
@@ -1767,7 +1762,7 @@ impl FromBytes for Key {
             }
             KeyTag::Package => {
                 let (package_addr, rem) = PackageAddr::from_bytes(remainder)?;
-                Ok((Key::Package(package_addr), rem))
+                Ok((Key::SmartContract(package_addr), rem))
             }
             KeyTag::AddressableEntity => {
                 let (entity_addr, rem) = EntityAddr::from_bytes(remainder)?;
@@ -1799,12 +1794,12 @@ impl FromBytes for Key {
                 Ok((Key::EntryPoint(entry_point_addr), rem))
             }
             KeyTag::State => {
-                let (addr, rem) = StateFieldAddr::from_bytes(remainder)?;
-                Ok((Key::State(addr), rem))
+                let (entity_addr, rem) = EntityAddr::from_bytes(remainder)?;
+                Ok((Key::State(entity_addr), rem))
             }
-            KeyTag::TypeDefinitions => {
-                let (type_uid, rem) = TypeUid::from_bytes(remainder)?;
-                Ok((Key::TypeDef(type_uid), rem))
+            KeyTag::RewardsHandling => {
+                let (_, rem) = <[u8; 32]>::from_bytes(remainder)?;
+                Ok((Key::RewardsHandling, rem))
             }
         }
     }
@@ -1831,7 +1826,7 @@ fn please_add_to_distribution_impl(key: Key) {
         Key::ChainspecRegistry => unimplemented!(),
         Key::ChecksumRegistry => unimplemented!(),
         Key::BidAddr(_) => unimplemented!(),
-        Key::Package(_) => unimplemented!(),
+        Key::SmartContract(_) => unimplemented!(),
         Key::AddressableEntity(..) => unimplemented!(),
         Key::ByteCode(..) => unimplemented!(),
         Key::Message(_) => unimplemented!(),
@@ -1840,14 +1835,14 @@ fn please_add_to_distribution_impl(key: Key) {
         Key::BalanceHold(_) => unimplemented!(),
         Key::EntryPoint(_) => unimplemented!(),
         Key::State(_) => unimplemented!(),
-        Key::TypeDef(_) => unimplemented!(),
+        Key::RewardsHandling => unimplemented!(),
     }
 }
 
 #[cfg(any(feature = "testing", test))]
 impl Distribution<Key> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Key {
-        match rng.gen_range(0..=25) {
+        match rng.gen_range(0..=24) {
             0 => Key::Account(rng.gen()),
             1 => Key::Hash(rng.gen()),
             2 => Key::URef(rng.gen()),
@@ -1864,10 +1859,7 @@ impl Distribution<Key> for Standard {
             13 => Key::ChainspecRegistry,
             14 => Key::ChecksumRegistry,
             15 => Key::BidAddr(rng.gen()),
-            16 => {
-                let arr: [u8; 32] = rng.gen();
-                Key::Package(arr.into())
-            }
+            16 => Key::SmartContract(rng.gen()),
             17 => Key::AddressableEntity(rng.gen()),
             18 => Key::ByteCode(rng.gen()),
             19 => Key::Message(rng.gen()),
@@ -1876,7 +1868,6 @@ impl Distribution<Key> for Standard {
             22 => Key::BalanceHold(rng.gen()),
             23 => Key::EntryPoint(rng.gen()),
             24 => Key::State(rng.gen()),
-            25 => Key::TypeDef(TypeUid::new(rng.gen())),
             _ => unreachable!(),
         }
     }
@@ -1912,8 +1903,8 @@ mod serde_helpers {
         BlockGlobal(&'a BlockGlobalAddr),
         BalanceHold(&'a BalanceHoldAddr),
         EntryPoint(&'a EntryPointAddr),
-        State(&'a StateFieldAddr),
-        TypeDef(&'a TypeUid),
+        State(&'a EntityAddr),
+        RewardsHandling,
     }
 
     #[derive(Deserialize)]
@@ -1943,8 +1934,8 @@ mod serde_helpers {
         BlockGlobal(BlockGlobalAddr),
         BalanceHold(BalanceHoldAddr),
         EntryPoint(EntryPointAddr),
-        State(StateFieldAddr),
-        TypeDef(TypeUid),
+        State(EntityAddr),
+        RewardsHandling,
     }
 
     impl<'a> From<&'a Key> for BinarySerHelper<'a> {
@@ -1967,7 +1958,7 @@ mod serde_helpers {
                 Key::ChecksumRegistry => BinarySerHelper::ChecksumRegistry,
                 Key::BidAddr(bid_addr) => BinarySerHelper::BidAddr(bid_addr),
                 Key::Message(message_addr) => BinarySerHelper::Message(message_addr),
-                Key::Package(package_addr) => BinarySerHelper::Package(package_addr),
+                Key::SmartContract(package_addr) => BinarySerHelper::Package(package_addr),
                 Key::AddressableEntity(entity_addr) => {
                     BinarySerHelper::AddressableEntity(entity_addr)
                 }
@@ -1978,8 +1969,8 @@ mod serde_helpers {
                     BinarySerHelper::BalanceHold(balance_hold_addr)
                 }
                 Key::EntryPoint(entry_point_addr) => BinarySerHelper::EntryPoint(entry_point_addr),
-                Key::State(addr) => BinarySerHelper::State(addr),
-                Key::TypeDef(type_uid) => BinarySerHelper::TypeDef(type_uid),
+                Key::State(entity_addr) => BinarySerHelper::State(entity_addr),
+                Key::RewardsHandling => BinarySerHelper::RewardsHandling,
             }
         }
     }
@@ -2004,7 +1995,7 @@ mod serde_helpers {
                 BinaryDeserHelper::ChecksumRegistry => Key::ChecksumRegistry,
                 BinaryDeserHelper::BidAddr(bid_addr) => Key::BidAddr(bid_addr),
                 BinaryDeserHelper::Message(message_addr) => Key::Message(message_addr),
-                BinaryDeserHelper::Package(package_addr) => Key::Package(package_addr),
+                BinaryDeserHelper::Package(package_addr) => Key::SmartContract(package_addr),
                 BinaryDeserHelper::AddressableEntity(entity_addr) => {
                     Key::AddressableEntity(entity_addr)
                 }
@@ -2017,8 +2008,8 @@ mod serde_helpers {
                 BinaryDeserHelper::EntryPoint(entry_point_addr) => {
                     Key::EntryPoint(entry_point_addr)
                 }
-                BinaryDeserHelper::State(addr) => Key::State(addr),
-                BinaryDeserHelper::TypeDef(type_uid) => Key::TypeDef(type_uid),
+                BinaryDeserHelper::State(entity_addr) => Key::State(entity_addr),
+                BinaryDeserHelper::RewardsHandling => Key::RewardsHandling,
             }
         }
     }
@@ -2049,8 +2040,6 @@ impl<'de> Deserialize<'de> for Key {
 #[cfg(test)]
 mod tests {
     use std::string::ToString;
-
-    use serde_json::Value;
 
     use super::*;
     use crate::{
@@ -2086,7 +2075,7 @@ mod tests {
     const UNBOND_KEY: Key = Key::Unbond(AccountHash::new([42; 32]));
     const CHAINSPEC_REGISTRY_KEY: Key = Key::ChainspecRegistry;
     const CHECKSUM_REGISTRY_KEY: Key = Key::ChecksumRegistry;
-    const PACKAGE_KEY: Key = Key::Package(PackageAddr::new([42; 32]));
+    const PACKAGE_KEY: Key = Key::SmartContract([42; 32]);
     const ADDRESSABLE_ENTITY_SYSTEM_KEY: Key =
         Key::AddressableEntity(EntityAddr::new_system([42; 32]));
     const ADDRESSABLE_ENTITY_ACCOUNT_KEY: Key =
@@ -2110,14 +2099,10 @@ mod tests {
     ));
     const BLOCK_TIME_KEY: Key = Key::BlockGlobal(BlockGlobalAddr::BlockTime);
     const BLOCK_MESSAGE_COUNT_KEY: Key = Key::BlockGlobal(BlockGlobalAddr::MessageCount);
-    // const STATE_KEY: Key = Key::State(EntityAddr::new_contract_entity_addr([42; 32]), [42; 32]);
+    // const STATE_KEY: Key = Key::State(EntityAddr::new_contract_entity_addr([42; 32]));
     const BALANCE_HOLD: Key =
         Key::BalanceHold(BalanceHoldAddr::new_gas([42; 32], BlockTime::new(100)));
-    const STATE_KEY: Key = Key::State(StateFieldAddr::new_state_field_addr(
-        EntityAddr::new_smart_contract([42; 32]),
-        [43; 32],
-    ));
-    const TYPE_DEF_KEY: Key = Key::TypeDef(TypeUid::new(0x0000_0042));
+    const STATE_KEY: Key = Key::State(EntityAddr::new_smart_contract([42; 32]));
     const KEYS: &[Key] = &[
         ACCOUNT_KEY,
         HASH_KEY,
@@ -2150,7 +2135,6 @@ mod tests {
         BLOCK_MESSAGE_COUNT_KEY,
         BALANCE_HOLD,
         STATE_KEY,
-        TYPE_DEF_KEY,
     ];
     const HEX_STRING: &str = "2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a";
     const TOPIC_NAME_HEX_STRING: &str =
@@ -2333,9 +2317,8 @@ mod tests {
         assert_eq!(
             format!("{}", STATE_KEY),
             format!(
-                "Key::State(entity-contract-{}-{})",
-                base16::encode_lower(&[42; 32]),
-                base16::encode_lower(&[43; 32])
+                "Key::State(entity-contract-{})",
+                base16::encode_lower(&[42; 32])
             )
         );
         assert_eq!(
@@ -2353,10 +2336,6 @@ mod tests {
                 BlockGlobalAddr::MessageCount,
                 base16::encode_lower(&BLOCK_GLOBAL_PADDING_BYTES)
             )
-        );
-        assert_eq!(
-            format!("{}", TYPE_DEF_KEY),
-            "Key::TypeDef(0x00000042)".to_string()
         );
     }
 
@@ -2421,9 +2400,9 @@ mod tests {
     #[test]
     fn check_package_key_getters() {
         let hash = [42; KEY_HASH_LENGTH];
-        let key1 = Key::Package(hash.into());
+        let key1 = Key::SmartContract(hash);
         assert!(key1.into_account().is_none());
-        assert_eq!(key1.into_package_addr(), Some(hash.into()));
+        assert_eq!(key1.into_package_addr(), Some(hash));
         assert!(key1.as_uref().is_none());
     }
 
@@ -2749,7 +2728,6 @@ mod tests {
         bytesrepr::test_serialization_roundtrip(&MESSAGE_KEY);
         bytesrepr::test_serialization_roundtrip(&NAMED_KEY);
         bytesrepr::test_serialization_roundtrip(&STATE_KEY);
-        bytesrepr::test_serialization_roundtrip(&TYPE_DEF_KEY);
     }
 
     #[test]
@@ -2777,7 +2755,7 @@ mod tests {
         round_trip(&Key::Withdraw(AccountHash::new(zeros)));
         round_trip(&Key::Dictionary(zeros));
         round_trip(&Key::Unbond(AccountHash::new(zeros)));
-        round_trip(&Key::Package(zeros.into()));
+        round_trip(&Key::SmartContract(zeros));
         round_trip(&Key::AddressableEntity(EntityAddr::new_system(zeros)));
         round_trip(&Key::AddressableEntity(EntityAddr::new_account(zeros)));
         round_trip(&Key::AddressableEntity(EntityAddr::new_smart_contract(
@@ -2800,39 +2778,20 @@ mod tests {
         round_trip(&Key::BlockGlobal(BlockGlobalAddr::ProtocolVersion));
         round_trip(&Key::BlockGlobal(BlockGlobalAddr::AddressableEntity));
         round_trip(&Key::BalanceHold(BalanceHoldAddr::default()));
-        round_trip(&Key::State(StateFieldAddr::new_state_field_addr(
-            EntityAddr::new_system(zeros),
-            zeros,
-        )));
-        round_trip(&Key::TypeDef(TypeUid::new(0)));
+        round_trip(&Key::State(EntityAddr::new_system(zeros)));
     }
 
     #[test]
     fn state_json_deserialization() {
         let mut test_rng = TestRng::new();
-        let state_key = Key::State(StateFieldAddr::new_state_field_addr(
-            EntityAddr::new_account(test_rng.gen()),
-            [0; 32],
-        ));
+        let state_key = Key::State(EntityAddr::new_account(test_rng.gen()));
         round_trip(&state_key);
 
-        let state_key = Key::State(StateFieldAddr::new_state_field_addr(
-            EntityAddr::new_system(test_rng.gen()),
-            [0; 32],
-        ));
+        let state_key = Key::State(EntityAddr::new_system(test_rng.gen()));
         round_trip(&state_key);
 
-        let state_key = Key::State(StateFieldAddr::new_state_field_addr(
-            EntityAddr::new_smart_contract(test_rng.gen()),
-            [0; 32],
-        ));
+        let state_key = Key::State(EntityAddr::new_smart_contract(test_rng.gen()));
         round_trip(&state_key);
-    }
-
-    #[test]
-    fn fookey() {
-        let key = Key::URef(URef::new([0xAB; 32], AccessRights::READ_ADD_WRITE));
-        dbg!(key.to_bytes().unwrap());
     }
 
     #[test]
@@ -2864,20 +2823,6 @@ mod tests {
         bytesrepr::test_serialization_roundtrip(&MESSAGE_TOPIC_KEY);
         bytesrepr::test_serialization_roundtrip(&MESSAGE_KEY);
         bytesrepr::test_serialization_roundtrip(&NAMED_KEY);
-        bytesrepr::test_serialization_roundtrip(&TYPE_DEF_KEY);
-    }
-
-    #[test]
-    fn key_of_smart_contract_json_roundtrip() {
-        let addr = [122_u8; 32];
-        let hex_encoded_addr = hex::encode(addr);
-        let key = Key::Package(PackageAddr::new(addr));
-        let stringified_key = serde_json::to_string(&key).expect("successfull serialization");
-        let json: Value =
-            serde_json::from_str(&stringified_key).expect("successfull serialization");
-        assert_eq!(json, Value::String(format!("package-{hex_encoded_addr}")));
-        let got: Key = serde_json::from_str(&stringified_key).expect("expected deserialization");
-        assert_eq!(key, got);
     }
 
     fn round_trip(key: &Key) {

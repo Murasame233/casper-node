@@ -840,12 +840,6 @@ where
     let validator_bid_addr = BidAddr::from(validator_public_key.clone());
     // is there such a validator?
     let validator_bid = read_validator_bid(provider, &validator_bid_addr.into())?;
-    if amount < U512::from(validator_bid.minimum_delegation_amount()) {
-        return Err(Error::DelegationAmountTooSmall.into());
-    }
-    if amount > U512::from(validator_bid.maximum_delegation_amount()) {
-        return Err(Error::DelegationAmountTooLarge.into());
-    }
 
     // is there already a record for this delegator?
     let delegator_bid_key =
@@ -854,9 +848,24 @@ where
     let (target, delegator_bid) = if let Some(BidKind::Delegator(mut delegator_bid)) =
         provider.read_bid(&delegator_bid_key)?
     {
+        let current_stake = delegator_bid.staked_amount();
+        let total_stake = amount.saturating_add(current_stake);
+        let validator_max = U512::from(validator_bid.maximum_delegation_amount());
+        if total_stake > validator_max {
+            // Fill up the delegator stake upto the maximum limit and only transfer the difference
+            // required.
+            return Err(Error::DelegationAmountTooLarge.into());
+        };
         delegator_bid.increase_stake(amount)?;
         (*delegator_bid.bonding_purse(), delegator_bid)
     } else {
+        // Early checks for a new delegator entry into a validators set.
+        if amount < U512::from(validator_bid.minimum_delegation_amount()) {
+            return Err(Error::DelegationAmountTooSmall.into());
+        }
+        if amount > U512::from(validator_bid.maximum_delegation_amount()) {
+            return Err(Error::DelegationAmountTooLarge.into());
+        }
         // is this validator over the delegator limit
         // or is there a reservation for given delegator public key?
         let delegator_count = provider.delegator_count(&validator_bid_addr)?;
@@ -1362,13 +1371,6 @@ pub fn process_updated_delegator_stake_boundaries<P: Auction>(
     minimum_delegation_amount: u64,
     maximum_delegation_amount: u64,
 ) -> Result<(), Error> {
-    // check modified delegation bookends
-    let raised_min = validator_bid.minimum_delegation_amount() < minimum_delegation_amount;
-    let lowered_max = validator_bid.maximum_delegation_amount() > maximum_delegation_amount;
-    if !raised_min && !lowered_max {
-        return Ok(());
-    }
-
     let era_end_timestamp_millis = get_era_end_timestamp_millis(provider)?;
     if validator_bid
         .is_locked_with_vesting_schedule(era_end_timestamp_millis, vesting_schedule_period_millis)
@@ -1379,9 +1381,19 @@ pub fn process_updated_delegator_stake_boundaries<P: Auction>(
         return Err(Error::VestingLockout);
     }
 
+    let previous_minimum = validator_bid.minimum_delegation_amount();
+    let previous_maximum = validator_bid.maximum_delegation_amount();
+
     // set updated delegation amount range
     validator_bid
         .set_delegation_amount_boundaries(minimum_delegation_amount, maximum_delegation_amount);
+
+    // check modified delegation bookends
+    let raised_min = previous_minimum < minimum_delegation_amount;
+    let lowered_max = previous_maximum > maximum_delegation_amount;
+    if !raised_min && !lowered_max {
+        return Ok(());
+    }
 
     let validator_public_key = validator_bid.validator_public_key();
     let min_delegation = minimum_delegation_amount.into();
@@ -1572,14 +1584,24 @@ pub fn reward(
     era_id: EraId,
     rewards: &[U512],
     seigniorage_recipients_snapshot: &SeigniorageRecipientsSnapshot,
+    rewards_ratio: Ratio<u64>,
 ) -> Result<Option<U512>, Error> {
-    let validator_rewards =
-        match rewards_per_validator(validator, era_id, rewards, seigniorage_recipients_snapshot) {
-            Ok(rewards) => rewards,
-            Err(Error::ValidatorNotFound) => return Ok(None),
-            Err(Error::MissingSeigniorageRecipients) => return Ok(None),
-            Err(err) => return Err(err),
-        };
+    let rewards_ratio_as_u512 = Ratio::new(
+        U512::from(*rewards_ratio.numer()),
+        U512::from(*rewards_ratio.denom()),
+    );
+    let validator_rewards = match rewards_per_validator(
+        validator,
+        era_id,
+        rewards,
+        seigniorage_recipients_snapshot,
+        rewards_ratio_as_u512,
+    ) {
+        Ok(rewards) => rewards,
+        Err(Error::ValidatorNotFound) => return Ok(None),
+        Err(Error::MissingSeigniorageRecipients) => return Ok(None),
+        Err(err) => return Err(err),
+    };
 
     let reward = validator_rewards
         .into_iter()
@@ -1605,6 +1627,7 @@ pub(crate) fn rewards_per_validator(
     era_id: EraId,
     rewards: &[U512],
     seigniorage_recipients_snapshot: &SeigniorageRecipientsSnapshot,
+    rewards_ratio: Ratio<U512>,
 ) -> Result<Vec<RewardsPerValidator>, Error> {
     let mut results = Vec::with_capacity(rewards.len());
 
@@ -1616,7 +1639,8 @@ pub(crate) fn rewards_per_validator(
         // record zero allocations for the current validators in EraInfo)
         .filter(|(amount, eras_back)| !amount.is_zero() || *eras_back == 0)
     {
-        let total_reward = Ratio::from(reward_amount);
+        let factor = { Ratio::new(U512::from(100), U512::from(100)) - rewards_ratio };
+        let total_reward = Ratio::from(reward_amount) * factor;
         let rewarded_era = era_id
             .checked_sub(eras_back)
             .ok_or(Error::MissingSeigniorageRecipients)?;
@@ -1657,7 +1681,7 @@ pub(crate) fn rewards_per_validator(
             // and increase their unbond request by the corresponding amount.
 
             results.push(RewardsPerValidator {
-                validator_reward: reward_amount,
+                validator_reward: total_reward.to_integer(),
                 delegator_rewards: BTreeMap::new(),
             });
             continue;
@@ -1702,7 +1726,7 @@ pub(crate) fn rewards_per_validator(
         let total_delegator_payout: U512 =
             delegator_rewards.iter().map(|(_, &amount)| amount).sum();
 
-        let validator_reward = reward_amount - total_delegator_payout;
+        let validator_reward = { total_reward - Ratio::from(total_delegator_payout) }.to_integer();
 
         results.push(RewardsPerValidator {
             validator_reward,
